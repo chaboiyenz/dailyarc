@@ -11,4 +11,3 @@ export function useUser(id: string) {
 export function useCreateUser() {
   return trpc.user.create.useMutation()
 }
-

@@ -13,4 +13,3 @@ export { appRouter, type AppRouter } from './trpc/router'
 // )
 
 console.log('Functions entry point loaded (stub mode)')
-

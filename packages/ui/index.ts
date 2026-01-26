@@ -1,7 +1,7 @@
 // =============================================================================
 // @repo/ui - The Shared Component Closet
 // =============================================================================
-// 
+//
 // 🎭 ANALOGY: This is like a shared wardrobe in a theater production.
 // All the actors (apps) can come here to borrow costumes (components)
 // instead of each making their own from scratch!
@@ -18,13 +18,13 @@ export { Counter } from './components/Counter'
 
 // Shadcn UI Components
 export { Button, buttonVariants } from './components/ui/button'
-export { 
-  Card, 
-  CardHeader, 
-  CardFooter, 
-  CardTitle, 
-  CardDescription, 
-  CardContent 
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
 } from './components/ui/card'
 
 // Utilities

@@ -87,4 +87,3 @@ describe('useCreateUser', () => {
     expect(typeof result.current.mutateAsync).toBe('function')
   })
 })
-

@@ -1,11 +1,11 @@
 {
-    "name": "@repo/config",
-    "version": "0.0.0",
-    "private": true,
-    "files": [
-        "tsconfig.json"
-    ],
-    "publishConfig": {
-        "access": "public"
-    }
+  "name": "@repo/config",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "tsconfig.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

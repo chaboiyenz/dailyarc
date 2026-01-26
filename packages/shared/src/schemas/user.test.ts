@@ -6,7 +6,7 @@ describe('UserSchema', () => {
     const result = UserSchema.safeParse({
       id: '123',
       email: 'test@example.com',
-      name: 'Test User'
+      name: 'Test User',
     })
     expect(result.success).toBe(true)
   })
@@ -14,7 +14,7 @@ describe('UserSchema', () => {
   it('rejects missing id', () => {
     const result = UserSchema.safeParse({
       email: 'test@example.com',
-      name: 'Test User'
+      name: 'Test User',
     })
     expect(result.success).toBe(false)
   })
@@ -23,7 +23,7 @@ describe('UserSchema', () => {
     const result = UserSchema.safeParse({
       id: '123',
       email: 'invalid-email',
-      name: 'Test User'
+      name: 'Test User',
     })
     expect(result.success).toBe(false)
   })
@@ -31,7 +31,7 @@ describe('UserSchema', () => {
   it('allows optional name', () => {
     const result = UserSchema.safeParse({
       id: '123',
-      email: 'test@example.com'
+      email: 'test@example.com',
     })
     expect(result.success).toBe(true)
   })
@@ -41,7 +41,7 @@ describe('CreateUserSchema', () => {
   it('validates user creation input', () => {
     const result = CreateUserSchema.safeParse({
       email: 'new@example.com',
-      name: 'New User'
+      name: 'New User',
     })
     expect(result.success).toBe(true)
   })
@@ -49,16 +49,15 @@ describe('CreateUserSchema', () => {
   it('rejects invalid email on creation', () => {
     const result = CreateUserSchema.safeParse({
       email: 'bad-email',
-      name: 'New User'
+      name: 'New User',
     })
     expect(result.success).toBe(false)
   })
 
   it('requires email', () => {
     const result = CreateUserSchema.safeParse({
-      name: 'New User'
+      name: 'New User',
     })
     expect(result.success).toBe(false)
   })
 })
-

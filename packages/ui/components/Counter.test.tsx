@@ -29,4 +29,3 @@ describe('Counter', () => {
     expect(screen.getByRole('button')).toHaveTextContent('count is 5')
   })
 })
-

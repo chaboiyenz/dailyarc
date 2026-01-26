@@ -31,12 +31,12 @@ describe('App', () => {
     render(<App />)
     const increaseButton = screen.getByRole('button', { name: /increment counter/i })
     const resetButton = screen.getByRole('button', { name: /reset/i })
-    
+
     // Increment a few times
     fireEvent.click(increaseButton)
     fireEvent.click(increaseButton)
     expect(screen.getByText('2')).toBeInTheDocument()
-    
+
     // Reset
     fireEvent.click(resetButton)
     expect(screen.getByText('0')).toBeInTheDocument()
