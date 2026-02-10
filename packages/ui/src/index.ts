@@ -26,6 +26,7 @@ export {
   CardDescription,
   CardContent,
 } from './components/ui/card'
+export { Toast, toastVariants } from './components/ui/toast'
 
 // Utilities
 export { cn } from './lib/utils'

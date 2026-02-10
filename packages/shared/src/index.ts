@@ -1,2 +1,1 @@
-// Schemas
 export * from './schemas'

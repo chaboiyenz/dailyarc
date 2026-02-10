@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./Header": "./components/Header.tsx",
-    "./Counter": "./components/Counter.tsx",
-    "./Button": "./components/ui/button.tsx",
-    "./Card": "./components/ui/card.tsx",
-    "./utils": "./lib/utils.ts"
+    "./Header": "./src/components/Header.tsx",
+    "./Counter": "./src/components/Counter.tsx",
+    "./Button": "./src/components/ui/button.tsx",
+    "./Card": "./src/components/ui/card.tsx",
+    "./Input": "./src/components/ui/input.tsx",
+    "./Label": "./src/components/ui/label.tsx",
+    "./Toast": "./src/components/ui/toast.tsx",
+    "./utils": "./src/lib/utils.ts",
+    ".": "./src/index.ts"
   },
   "scripts": {
     "lint": "eslint \"**/*.{ts,tsx}\"",

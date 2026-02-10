@@ -4,34 +4,53 @@ import { UserSchema, CreateUserSchema } from './user'
 describe('UserSchema', () => {
   it('validates correct user data', () => {
     const result = UserSchema.safeParse({
-      id: '123',
+      uid: '123',
       email: 'test@example.com',
-      name: 'Test User',
+      displayName: 'Test User',
+      role: 'TRAINEE',
+      onboardingComplete: true,
+      inventory: [],
+      stats: {
+        currentPushupLevel: 0,
+        weight: 75,
+      },
     })
     expect(result.success).toBe(true)
   })
 
-  it('rejects missing id', () => {
+  it('rejects missing uid', () => {
     const result = UserSchema.safeParse({
       email: 'test@example.com',
-      name: 'Test User',
+      displayName: 'Test User',
+      role: 'TRAINEE',
+      onboardingComplete: false,
     })
     expect(result.success).toBe(false)
   })
 
   it('rejects invalid email', () => {
     const result = UserSchema.safeParse({
-      id: '123',
+      uid: '123',
       email: 'invalid-email',
-      name: 'Test User',
+      displayName: 'Test User',
+      role: null,
+      onboardingComplete: false,
     })
     expect(result.success).toBe(false)
   })
 
-  it('allows optional name', () => {
+  it('allows optional photoURL', () => {
     const result = UserSchema.safeParse({
-      id: '123',
+      uid: '123',
       email: 'test@example.com',
+      displayName: 'Test User',
+      role: null,
+      onboardingComplete: false,
+      inventory: [],
+      stats: {
+        currentPushupLevel: 0,
+        weight: 0,
+      },
     })
     expect(result.success).toBe(true)
   })

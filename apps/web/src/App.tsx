@@ -1,247 +1,104 @@
-/**
- * =============================================================================
- * WELCOME TO THE HYTEL WAY: MONOREPO STACK
- * =============================================================================
- *
- * This file demonstrates the key concepts of our tech stack using friendly
- * analogies. Think of building a web app like putting on a theater production!
- *
- * THE STACK EXPLAINED (Theater Analogy):
- *
- * PNPM (Package Manager)
- *    -> "The super-organized prop master"
- *    -> Manages all the tools/packages we need, storing them efficiently
- *    -> Unlike npm, it doesn't duplicate packages - saves space!
- *
- * TURBOREPO (Monorepo Build System)
- *    -> "The stage manager who coordinates everything"
- *    -> Runs tasks (build, test, dev) across multiple packages smartly
- *    -> Caches results so repeated tasks are lightning fast!
- *
- * REACT + VITE (Frontend Framework + Build Tool)
- *    -> "The stage and lighting system"
- *    -> React: Builds the interactive UI (the actors on stage)
- *    -> Vite: Super-fast dev server (instant lighting changes!)
- *
- * TAILWIND CSS + SHADCN UI (Styling)
- *    -> "The costume designer"
- *    -> Tailwind: Utility classes for quick styling (fabric swatches)
- *    -> Shadcn UI: Pre-made, beautiful component patterns (costume templates)
- *
- * @repo/ui (Shared Component Package)
- *    -> "The shared costume closet"
- *    -> Components here (Header, Button, Card) can be used by ANY app!
- *    -> Located in: packages/ui/
- *
- * @repo/shared (Shared Types & Schemas)
- *    -> "The spellbook of shared rules"
- *    -> Zod schemas define what data looks like (validation spells!)
- *    -> Located in: packages/shared/
- *
- * tRPC + TanStack Query (API Layer)
- *    -> "The messenger system between actors"
- *    -> tRPC: Type-safe communication with backend (no lost messages!)
- *    -> TanStack Query: Smart caching of server data (remembers the script!)
- *
- * =============================================================================
- */
-
-import { useState } from 'react'
 import './style.css'
-
-// Importing from @repo/ui - the "shared component closet"
-// These components live in packages/ui/ and can be used by any app!
+import { AuthProvider, useAuthContext } from '@/providers/AuthProvider'
+import { QueryProvider } from '@/providers/QueryProvider'
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 import { Header } from '@repo/ui/Header'
 import { Button } from '@repo/ui/Button'
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@repo/ui/Card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@repo/ui/Card'
 
-// Assets
-import viteLogo from '/vite.svg'
-import reactLogo from '/react.svg'
+function AppContent() {
+  const { user, profile, loading, needsOnboarding, signInWithGoogle, signOut } = useAuthContext()
 
-/**
- * Main App Component
- *
- * This is the "main stage" of our application. Everything you see
- * in the browser starts here!
- */
-export function App() {
-  // React State - like a scoreboard that updates the display automatically
-  const [count, setCount] = useState(0)
-
-  return (
-    <div className="min-h-screen py-8 px-4">
-      {/* 
-        Header Component from @repo/ui
-        This comes from our shared "costume closet" (packages/ui)
-        Any app in the monorepo can use this same Header!
-      */}
-      <Header title="The Hytel Way" />
-
-      {/* Logo Section */}
-      <div className="flex justify-center gap-8 my-8">
-        <a href="https://vitejs.dev" target="_blank" rel="noopener noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
-          <img src={reactLogo} className="logo" alt="React logo" />
-        </a>
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading DailyArc…</p>
+        </div>
       </div>
+    )
+  }
 
-      {/* Main Content Grid */}
-      <div className="max-w-4xl mx-auto grid gap-6 md:grid-cols-2">
-        {/* 
-          Interactive Counter Card
-          Demonstrates React state + Shadcn UI components
-        */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Interactive Counter</CardTitle>
-            <CardDescription>
-              Click the buttons to change the count. This demonstrates React state management - when
-              count changes, the UI updates automatically!
+  if (!user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        {/* Hero */}
+        <div className="text-center">
+          <h1 className="text-5xl font-extrabold tracking-tight text-white">
+            Daily<span className="text-primary">Arc</span>
+          </h1>
+          <p className="mt-3 text-lg text-slate-400">Your dedicated fitness journey starts here.</p>
+        </div>
+
+        {/* Sign-in Card */}
+        <Card className="w-full max-w-sm border-slate-700 bg-slate-800/60 shadow-2xl backdrop-blur-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl text-white">Get Started</CardTitle>
+            <CardDescription className="text-slate-400">
+              Sign in to begin your training arc.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center">
-              <p className="text-6xl font-bold text-primary mb-6">{count}</p>
-              <div className="flex justify-center gap-4">
-                {/* 
-                  Shadcn UI Buttons
-                  These come from packages/ui/components/ui/button.tsx
-                  The "variant" prop changes the button style (like costume options!)
-                */}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setCount(c => c - 1)}
-                  aria-label="Decrement counter"
-                >
-                  - Decrease
-                </Button>
-                <Button
-                  variant="default"
-                  size="lg"
-                  onClick={() => setCount(c => c + 1)}
-                  aria-label="Increment counter"
-                >
-                  + Increase
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="justify-center">
-            <Button variant="ghost" onClick={() => setCount(0)}>
-              Reset to Zero
+            <Button className="w-full gap-2" size="lg" onClick={signInWithGoogle}>
+              {/* Google "G" SVG icon */}
+              <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z"
+                  fill="#EA4335"
+                />
+              </svg>
+              Sign in with Google
             </Button>
-          </CardFooter>
-        </Card>
-
-        {/* 
-          Stack Info Card
-          Educational content about the monorepo structure
-        */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Stack Overview</CardTitle>
-            <CardDescription>
-              What powers this template? Here's the cast of characters!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>pnpm</strong> - Fast, disk-efficient package manager
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>Turborepo</strong> - Smart monorepo build system
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>React + Vite</strong> - Fast UI development
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>Tailwind + Shadcn</strong> - Beautiful styling
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>tRPC</strong> - Type-safe API layer
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div>
-                <strong>TanStack Query</strong> - Server state management
-              </div>
-            </div>
           </CardContent>
-        </Card>
-
-        {/* 
-          Monorepo Structure Card
-        */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Monorepo Structure</CardTitle>
-            <CardDescription>Where to find things in this project</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-6 text-sm font-mono">
-              <div>
-                <h4 className="font-bold text-primary mb-2">apps/</h4>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>
-                    |-- web/ <span className="text-xs">(this React app)</span>
-                  </li>
-                  <li>
-                    |-- functions/ <span className="text-xs">(tRPC backend)</span>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold text-primary mb-2">packages/</h4>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>
-                    |-- ui/ <span className="text-xs">(shared components)</span>
-                  </li>
-                  <li>
-                    |-- shared/ <span className="text-xs">(Zod schemas)</span>
-                  </li>
-                  <li>
-                    |-- config/ <span className="text-xs">(TypeScript config)</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="justify-center gap-4">
-            <a href="https://turbo.build/repo/docs" target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary">Turborepo Docs</Button>
-            </a>
-            <a href="https://ui.shadcn.com" target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary">Shadcn UI Docs</Button>
-            </a>
-          </CardFooter>
         </Card>
       </div>
+    )
+  }
 
-      {/* Footer */}
-      <p className="text-center text-muted-foreground mt-8 text-sm">
-        Edit <code className="bg-muted px-1 rounded">apps/web/src/App.tsx</code> and save to see hot
-        reload in action!
-      </p>
+  if (needsOnboarding) {
+    return <OnboardingFlow />
+  }
+
+  // Main Dashboard (Placeholder for now)
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-between">
+          <Header title="DailyArc Dashboard" />
+          <Button variant="ghost" size="sm" onClick={signOut}>
+            Sign Out
+          </Button>
+        </div>
+        <div className="mt-12 space-y-4 text-center">
+          <h2 className="text-4xl font-bold tracking-tight">
+            Welcome, {profile?.displayName || profile?.role}!
+          </h2>
+          <p className="text-lg text-muted-foreground">You are now logged in and onboarded.</p>
+        </div>
+      </div>
     </div>
+  )
+}
+
+export function App() {
+  return (
+    <QueryProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </QueryProvider>
   )
 }
