@@ -10,6 +10,7 @@
     "./Input": "./src/components/ui/input.tsx",
     "./Label": "./src/components/ui/label.tsx",
     "./Toast": "./src/components/ui/toast.tsx",
+    "./Progress": "./src/components/ui/progress.tsx",
     "./utils": "./src/lib/utils.ts",
     ".": "./src/index.ts"
   },

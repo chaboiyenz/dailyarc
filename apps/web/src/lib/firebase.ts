@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, EmailAuthProvider } from 'firebase/auth'
 import {
   getFirestore,
   initializeFirestore,
@@ -45,4 +45,6 @@ console.log('🔍 Expected Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_I
 
 export { db }
 export const googleProvider = new GoogleAuthProvider()
+export const githubProvider = new GithubAuthProvider()
+export const emailProvider = new EmailAuthProvider()
 export default app

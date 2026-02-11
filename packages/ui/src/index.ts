@@ -27,6 +27,9 @@ export {
   CardContent,
 } from './components/ui/card'
 export { Toast, toastVariants } from './components/ui/toast'
+export { Progress } from './components/ui/progress'
+export { Input } from './components/ui/input'
+export { Label } from './components/ui/label'
 
 // Utilities
 export { cn } from './lib/utils'

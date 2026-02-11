@@ -3,17 +3,12 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut as firebaseSignOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   User as FirebaseUser,
 } from 'firebase/auth'
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-  enableNetwork,
-  waitForPendingWrites,
-} from 'firebase/firestore'
-import { auth, db, googleProvider } from '@/lib/firebase'
+import { doc, getDoc, enableNetwork, waitForPendingWrites } from 'firebase/firestore'
+import { auth, db, googleProvider, githubProvider } from '@/lib/firebase'
 import { UserSchema, type User } from '@repo/shared'
 
 export function useAuth() {
@@ -34,6 +29,18 @@ export function useAuth() {
 
   const signInWithGoogle = useCallback(async () => {
     await signInWithPopup(auth, googleProvider)
+  }, [])
+
+  const signInWithGithub = useCallback(async () => {
+    await signInWithPopup(auth, githubProvider)
+  }, [])
+
+  const signUpWithEmail = useCallback(async (email: string, pass: string) => {
+    await createUserWithEmailAndPassword(auth, email, pass)
+  }, [])
+
+  const signInWithEmail = useCallback(async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -172,5 +179,15 @@ export function useAuth() {
     return () => unsubscribe()
   }, [])
 
-  return { user, profile, loading, needsOnboarding, signInWithGoogle, signOut }
+  return {
+    user,
+    profile,
+    loading,
+    needsOnboarding,
+    signInWithGoogle,
+    signInWithGithub,
+    signUpWithEmail,
+    signInWithEmail,
+    signOut,
+  }
 }

@@ -9,6 +9,9 @@ interface AuthContextType {
   loading: boolean
   needsOnboarding: boolean
   signInWithGoogle: () => Promise<void>
+  signInWithGithub: () => Promise<void>
+  signUpWithEmail: (email: string, pass: string) => Promise<void>
+  signInWithEmail: (email: string, pass: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
