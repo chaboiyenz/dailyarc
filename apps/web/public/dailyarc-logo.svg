@@ -1,0 +1,32 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="#0f172a"/>
+  
+  <defs>
+    <linearGradient id="arc-gradient" x1="50" y1="400" x2="450" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2dd4bf" /> <stop offset="50%" stop-color="#136dec" /> <stop offset="100%" stop-color="#a855f7" /> </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+      <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+<path 
+    d="M80 420 C 180 420, 250 350, 400 120" 
+    stroke="url(#arc-gradient)" 
+    stroke-width="40" 
+    stroke-linecap="round"
+    filter="url(#glow)"
+    fill="none"
+  />
+
+<path 
+    d="M400 120 L430 90 M400 120 L430 150 M400 120 L370 90"
+    stroke="url(#arc-gradient)" 
+    stroke-width="30"
+    stroke-linecap="round"
+    filter="url(#glow)"
+  />
+</svg>

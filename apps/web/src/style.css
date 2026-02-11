@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   DailyArc Theme - Gaming/Bio-Hacking Aesthetic
+   Deep Navy (#0B0E14) + Electric Blue (#3b82f6) + Emerald Green
+   ============================================================================= */
+
+@layer base {
+  :root {
+    /* Base - Deep Navy Background */
+    --background: 215 25% 7%;        /* #0B0E14 */
+    --foreground: 210 40% 98%;       /* Near white */
+
+    /* Cards - Glassmorphism */
+    --card: 220 20% 12%;             /* Slightly lighter than bg */
+    --card-foreground: 210 40% 98%;
+    --popover: 220 20% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary - Electric Blue */
+    --primary: 217 91% 60%;           /* #3b82f6 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Darker slate for contrast */
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted - Subtle backgrounds */
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 15% 65%;
+
+    /* Accent - Emerald Green */
+    --accent: 158 64% 52%;            /* Emerald green #10b981 */
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Red for errors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders - Subtle with glow */
+    --border: 220 20% 20%;
+    --border-glow: 217 91% 60%;       /* Blue glow for active elements */
+    --input: 220 20% 18%;
+    --ring: 217 91% 60%;
+
+    /* Border radius */
+    --radius: 0.75rem;
+
+    /* Chart colors - Gaming aesthetic */
+    --chart-protein: 217 91% 60%;     /* Electric blue */
+    --chart-carbs: 158 64% 52%;       /* Emerald green */
+    --chart-fat: 38 92% 58%;          /* Orange accent */
+    --chart-warning: 0 72% 51%;       /* Red */
+    --chart-success: 158 64% 52%;     /* Emerald */
+
+    /* Sidebar - Command center aesthetic */
+    --sidebar: 215 25% 6%;            /* Deeper than background */
+    --sidebar-foreground: 215 15% 65%;
+    --sidebar-active: 217 91% 60%;    /* Electric blue */
+
+    /* Gaming UI - Glows and highlights */
+    --glow-primary: 217 91% 60%;      /* Blue glow */
+    --glow-success: 158 64% 52%;      /* Green glow */
+    --glow-locked: 220 10% 30%;       /* Gray for locked items */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* =============================================================================
+   Custom Styles
+   ============================================================================= */
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: hsl(var(--secondary));
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 2px solid hsl(var(--background));
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 2px solid hsl(var(--background));
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
+}
+
+/* SVG ring animations */
+.ring-animate {
+  transition: stroke-dashoffset 0.8s ease-out;
+}
+
+/* =============================================================================
+   Gaming/Bio-Hacking UI Components
+   ============================================================================= */
+
+/* Glassmorphism Card */
+.glass-card {
+  @apply bg-slate-900/40 backdrop-blur-xl border border-white/5;
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Glowing elements - Active/Unlocked state */
+.glow-active {
+  box-shadow:
+    0 0 15px rgba(59, 130, 246, 0.5),
+    0 0 30px rgba(59, 130, 246, 0.3),
+    inset 0 0 10px rgba(59, 130, 246, 0.1);
+  @apply border-blue-500/50;
+}
+
+/* Glowing elements - Success state */
+.glow-success {
+  box-shadow:
+    0 0 15px rgba(16, 185, 129, 0.5),
+    0 0 30px rgba(16, 185, 129, 0.3),
+    inset 0 0 10px rgba(16, 185, 129, 0.1);
+  @apply border-emerald-500/50;
+}
+
+/* Locked/Disabled state */
+.locked {
+  @apply opacity-50 grayscale cursor-not-allowed;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Tech Tree Connection Lines */
+.tree-line-active {
+  stroke: hsl(var(--primary));
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+  stroke-width: 2px;
+}
+
+.tree-line-locked {
+  stroke: hsl(var(--muted-foreground));
+  stroke-width: 1px;
+  opacity: 0.3;
+}
+
+/* Pulsing animation for notifications */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Sunburst rings for nutrition visualization */
+.sunburst-ring {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3));
+  transition: all 0.3s ease;
+}
+
+.sunburst-ring:hover {
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.6));
+  transform: scale(1.02);
+}
+
+/* Anatomical heat map colors */
+.heat-low {
+  fill: rgba(16, 185, 129, 0.3);
+}
+
+.heat-medium {
+  fill: rgba(251, 191, 36, 0.5);
+}
+
+.heat-high {
+  fill: rgba(239, 68, 68, 0.7);
+}
+
+a {
+  font-weight: 500;
+  color: hsl(var(--primary));
+  text-decoration: inherit;
+}
+a:hover {
+  text-decoration: underline;
+}

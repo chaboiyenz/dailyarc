@@ -1,0 +1,90 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isTrainer(traineeId) {
+      let trainee = get(/databases/$(database)/documents/users/$(traineeId)).data;
+      return isAuthenticated() && request.auth.uid == trainee.trainerId;
+    }
+
+    // ── Users Collection ──────────────────────────────────────────────
+    // A user can only read and write their OWN document.
+    // Trainers can read their trainee's documents.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isTrainer(userId);
+      allow write: if isOwner(userId);
+    }
+
+    // ── Daily Arcs Collection ─────────────────────────────────────────
+    // Document ID format: {userId}_{YYYY-MM-DD}
+    // Users can create and read their own daily arcs.
+    // Trainers can read their trainee's arcs.
+    match /dailyArcs/{arcId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isTrainer(resource.data.userId)
+      );
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Workouts Collection ───────────────────────────────────────────
+    // Document ID format: {userId}_{YYYY-MM-DD}_{timestamp}
+    // Users can create and read their own workout logs.
+    // Trainers can read their trainee's workouts.
+    match /workouts/{workoutId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isTrainer(resource.data.userId)
+      );
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Posts Collection (Community Feed) ─────────────────────────────
+    // All authenticated users can read posts.
+    // Only the author can create, update, or delete their own posts.
+    // Anyone can update the likes array (optimistic UI).
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow updating likes array by any authenticated user
+      allow update: if isAuthenticated() && (
+        // Author can update their own post content
+        resource.data.userId == request.auth.uid ||
+        // Or anyone can update ONLY the likes array
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'updatedAt']))
+      );
+    }
+
+    // ── Messages Collection (Private Messaging) ───────────────────────
+    // Only participants can read their messages.
+    // Only participants can create messages in their conversation.
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() &&
+        request.auth.uid in request.resource.data.participants &&
+        request.resource.data.senderId == request.auth.uid;
+      // Allow marking as read
+      allow update: if isAuthenticated() &&
+        request.auth.uid in resource.data.participants &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
+    // ── Deny everything else by default ───────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
