@@ -7,7 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./schemas": "./src/schemas/index.ts",
-    "./logic": "./src/logic/index.ts"
+    "./schemas/user": "./src/schemas/user.ts",
+    "./schemas/dailyArc": "./src/schemas/dailyArc.ts",
+    "./schemas/dailyLog": "./src/schemas/dailyLog.ts",
+    "./logic": "./src/logic/index.ts",
+    "./logic/readiness": "./src/logic/readiness.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

@@ -2,7 +2,7 @@ import './style.css'
 import { AuthProvider, useAuthContext } from '@/providers/AuthProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
-import { Header } from '@repo/ui/Header'
+import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@repo/ui/Button'
 
 function AppContent() {
@@ -11,10 +11,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-slate-400">Loading DailyArc…</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading DailyArc...</p>
         </div>
       </div>
     )
@@ -22,33 +22,33 @@ function AppContent() {
 
   if (!user) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 p-6">
-        {/* Immersive Background Accents */}
-        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute -right-20 -bottom-20 h-96 w-96 rounded-full bg-blue-500/10 blur-[120px]" />
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-6">
+        {/* Background Accents */}
+        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-[hsl(var(--primary)/0.06)] blur-[120px]" />
+        <div className="absolute -right-20 -bottom-20 h-96 w-96 rounded-full bg-[hsl(var(--accent)/0.06)] blur-[120px]" />
 
         <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-12 lg:flex-row lg:justify-between">
           {/* Hero Section */}
           <div className="max-w-xl text-center lg:text-left">
-            <h1 className="text-6xl font-black tracking-tighter text-white lg:text-8xl">
-              DAILY<span className="text-primary">ARC</span>
+            <h1 className="text-6xl font-black tracking-tighter text-foreground lg:text-8xl">
+              DAILY<span className="text-[hsl(var(--primary))]">ARC</span>
             </h1>
-            <p className="mt-6 text-xl text-slate-400 lg:text-2xl">
+            <p className="mt-6 text-xl text-muted-foreground lg:text-2xl">
               The high-performance protocol for your ultimate training arc. Track, progress, and
               conquer.
             </p>
           </div>
 
           {/* Sign-in Options */}
-          <div className="w-full max-w-md space-y-4">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/50 p-8 shadow-2xl backdrop-blur-xl">
-              <h2 className="mb-6 text-2xl font-bold text-white text-center">
+          <div className="w-full max-w-md">
+            <div className="rounded-3xl border border-border bg-card p-8 shadow-2xl">
+              <h2 className="mb-6 text-center text-2xl font-bold text-foreground">
                 Join the Initiative
               </h2>
 
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 <Button
-                  className="w-full gap-3 h-12 text-base"
+                  className="h-12 w-full gap-3 text-base"
                   size="lg"
                   onClick={signInWithGoogle}
                 >
@@ -74,7 +74,7 @@ function AppContent() {
                 </Button>
 
                 <Button
-                  className="w-full gap-3 h-12 text-base bg-slate-800 hover:bg-slate-700 text-white"
+                  className="h-12 w-full gap-3 bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   size="lg"
                   onClick={signInWithGithub}
                 >
@@ -84,24 +84,24 @@ function AppContent() {
                   Continue with GitHub
                 </Button>
 
-                <div className="relative my-6">
+                <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-slate-800" />
+                    <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-slate-900 px-2 text-slate-500 font-medium">Or</span>
+                    <span className="bg-card px-2 font-medium text-muted-foreground">Or</span>
                   </div>
                 </div>
 
                 <Button
                   variant="outline"
-                  className="w-full h-12 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  className="h-12 w-full border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   Email & Password
                 </Button>
               </div>
 
-              <p className="mt-8 text-center text-sm text-slate-500">
+              <p className="mt-8 text-center text-sm text-muted-foreground">
                 Secure access powered by DailyArc Forge.
               </p>
             </div>
@@ -115,24 +115,13 @@ function AppContent() {
     return <OnboardingFlow />
   }
 
-  // Main Dashboard (Placeholder for now)
+  // Main Dashboard
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-between">
-          <Header title="DailyArc Dashboard" />
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            Sign Out
-          </Button>
-        </div>
-        <div className="mt-12 space-y-4 text-center">
-          <h2 className="text-4xl font-bold tracking-tight">
-            Welcome, {profile?.displayName || profile?.role}!
-          </h2>
-          <p className="text-lg text-muted-foreground">You are now logged in and onboarded.</p>
-        </div>
-      </div>
-    </div>
+    <DashboardLayout
+      userName={profile?.displayName || 'User'}
+      userRole={profile?.role || 'TRAINEE'}
+      onSignOut={signOut}
+    />
   )
 }
 
