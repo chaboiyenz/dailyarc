@@ -1,236 +1,331 @@
-/**
- * Command Center Dashboard - Gaming/Bio-Hacking Aesthetic
- * Deep layers, glassmorphism, and data-dense visualization
- */
-
-import { Card, CardContent } from '@repo/ui'
-import ReadinessCircle from './ReadinessCircle'
-import SunburstMacros from './SunburstMacros'
+import { Skeleton } from '@repo/ui'
 import HumanSilhouette from './HumanSilhouette'
 import WeeklyReadinessChart from './WeeklyReadinessChart'
 import type { NavSection } from './Sidebar'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodaysArc } from '@/hooks/useTodaysArc'
-import { useWeeklyReadiness, useReadinessStreak } from '@/hooks/useWeeklyReadiness'
-import { calculateReadinessFactor, calculateDynamicMacros } from '@repo/shared/logic'
+import { useWeeklyReadiness } from '@/hooks/useWeeklyReadiness'
+import { useRecentWorkouts } from '@/hooks/useLogWorkout'
+import { useTodaysMealLogs } from '@/hooks/useMealLogs'
+import { calculateAdjustedMacros } from '@repo/shared'
+import { TrendingUp, Heart, Zap, Target, ChevronRight, AlertTriangle, Watch, Pencil } from 'lucide-react'
 
 interface DashboardOverviewProps {
   onNavigate: (section: NavSection) => void
 }
 
 export default function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
+  console.log('DASHBOARD_SYNC_CHECK')
   const { user } = useAuth()
   const { data: todaysArc, isLoading } = useTodaysArc(user?.uid || null)
-  const { data: weeklyData, isLoading: weeklyLoading } = useWeeklyReadiness(user?.uid || null)
-  const { streak, isLoading: streakLoading } = useReadinessStreak(user?.uid || null)
+  const {
+    data: weeklyData,
+    isLoading: weeklyLoading,
+    fatigueAlert,
+  } = useWeeklyReadiness(user?.uid || null)
+  const { data: recentWorkouts } = useRecentWorkouts(user?.uid || null)
+  const { consumed } = useTodaysMealLogs(user?.uid || null)
 
-  // Real-time data from Firestore or defaults
-  const readinessScore = todaysArc?.readinessScore ?? 0
+  // Real-time data from Firestore
+  const readinessAverage = todaysArc?.readinessAverage ?? 0
+  const readinessScore = readinessAverage * 2
   const recommendation = todaysArc?.recommendation ?? 'REST'
-  const soreness = todaysArc?.soreness || []
+  const soreness = todaysArc?.sorenessZones ?? []
+  const bodyBattery = todaysArc?.bioMetrics?.bodyBattery ?? 0
+  const restingHR = todaysArc?.bioMetrics?.restingHR ?? 0
+  const avgHR = todaysArc?.bioMetrics?.avgHR
+  const avgHRSource = todaysArc?.bioMetrics?.avgHRSource
 
-  // Calculate adjusted macros based on readiness
-  const baseMacros = { protein: 180, carbs: 250, fat: 70 }
-  const readinessFactor = readinessScore > 0 ? calculateReadinessFactor(readinessScore) : 1.0
-  const adjustedMacros = calculateDynamicMacros(baseMacros, readinessFactor)
+  // Macro calculations
+  const baseMacros = { calories: 2500, protein: 180, carbs: 250, fat: 70 }
+  const readinessFactor = todaysArc?.readinessFactor ?? 1.0
+  const adjustedMacros = calculateAdjustedMacros(baseMacros, readinessFactor)
 
-  if (isLoading) {
+  // Loading state
+  if (isLoading || weeklyLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Initializing command center...</p>
+      <div className="min-h-screen bg-white p-6 md:p-8 space-y-6">
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-40 w-full rounded-lg" />
+          <Skeleton className="h-40 w-full rounded-lg" />
+          <Skeleton className="h-40 w-full rounded-lg" />
         </div>
+        <Skeleton className="h-80 w-full rounded-lg" />
       </div>
     )
   }
 
+  const getReadinessColor = () => {
+    if (readinessScore < 3) return 'text-red-600'
+    if (readinessScore < 6) return 'text-amber-600'
+    return 'text-emerald-600'
+  }
+
+  const getMacroPercentages = () => ({
+    protein: Math.min((consumed.protein / adjustedMacros.protein) * 100, 100),
+    carbs: Math.min((consumed.carbs / adjustedMacros.carbs) * 100, 100),
+    fat: Math.min((consumed.fat / adjustedMacros.fat) * 100, 100),
+  })
+
+  const macroPercentages = getMacroPercentages()
+
+  const getSystemEnergyStatus = (value: number) => {
+    if (value >= 80) return 'Optimal Intensity Possible'
+    if (value >= 50) return 'Controlled Volume Recommended'
+    return 'Active Recovery Advised'
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Hero Grid - Readiness + Macros */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left: Large Readiness Circle */}
-        <Card className="glass-card flex items-center justify-center p-8" onClick={() => onNavigate('readiness')}>
-          <ReadinessCircle score={readinessScore} recommendation={recommendation} size={300} />
-        </Card>
-
-        {/* Right: Sunburst Macro Rings */}
-        <Card className="glass-card flex items-center justify-center p-8" onClick={() => onNavigate('nutrition')}>
-          <SunburstMacros
-            protein={{ current: 0, target: adjustedMacros.protein }}
-            carbs={{ current: 0, target: adjustedMacros.carbs }}
-            fat={{ current: 0, target: adjustedMacros.fat }}
-            size={320}
-          />
-        </Card>
-      </div>
-
-      {/* Secondary Grid - Recovery Map + Micro Stats */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recovery Map - Human Silhouette */}
-        <Card className="glass-card flex items-center justify-center p-6">
-          <HumanSilhouette soreness={soreness} size={240} />
-        </Card>
-
-        {/* Micro Stats - 2 columns */}
-        <div className="grid gap-6 lg:col-span-2 lg:grid-cols-3">
-          <MicroStatCard
-            icon={
-              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-            }
-            label="Sleep Score"
-            value={todaysArc?.sleepHours ? `${todaysArc.sleepHours.toFixed(1)}h` : '--'}
-            subtext={todaysArc?.sleepHours ? 'Good recovery' : 'No data'}
-            color="hsl(var(--primary))"
-          />
-
-          <MicroStatCard
-            icon={
-              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-            }
-            label="Avg HR"
-            value="--"
-            subtext="Phase 4"
-            color="hsl(var(--chart-warning))"
-          />
-
-          <MicroStatCard
-            icon={
-              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            }
-            label="Body Battery"
-            value={streakLoading ? '...' : `${streak}d`}
-            subtext="Streak"
-            color="hsl(var(--accent))"
-          />
-        </div>
-      </div>
-
-      {/* Weekly Trend - Full Width */}
-      <Card className="glass-card">
-        <div className="p-6 pb-3">
-          <h3 className="text-lg font-black tracking-tight text-foreground">Weekly Readiness Trend</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Last 7 days • Baseline at 100% • Peak performance above 100%
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4 md:p-8 pb-24">
+      {/* HERO: Primary Readiness */}
+      <div
+        className="mb-8 p-8 md:p-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('readiness')}
+      >
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-3">
+            Today's Status
+          </p>
+          <div className="flex items-end gap-4 mb-4">
+            <div className="flex-1">
+              <p className={`text-6xl md:text-7xl font-black ${getReadinessColor()}`}>
+                {readinessScore > 0 ? readinessScore.toFixed(1) : '—'}
+              </p>
+              <p className="text-lg text-gray-700 font-semibold mt-2">
+                {recommendation === 'INTENSE'
+                  ? '🔥 Ready for Intensity'
+                  : recommendation === 'MODERATE'
+                    ? '✓ Standard Session OK'
+                    : recommendation === 'LIGHT'
+                      ? '💭 Light Work'
+                      : '😴 Rest Advised'}
+              </p>
+            </div>
+            {fatigueAlert && (
+              <div className="pb-2 flex items-center gap-2 px-4 py-3 rounded-lg bg-red-100 border border-red-200 text-red-700">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                <span className="font-semibold">Fatigue Alert</span>
+              </div>
+            )}
+          </div>
+          <p className="text-gray-600 text-sm">
+            Based on sleep, stress, soreness, and energy levels from your morning check-in.
           </p>
         </div>
-        <CardContent className="pb-6">
-          <WeeklyReadinessChart data={weeklyData} isLoading={weeklyLoading} />
-        </CardContent>
-      </Card>
+      </div>
 
-      {/* Quick Actions - Phase indicators */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ActionCard
-          label="Training Log"
-          status="Available"
-          color="hsl(var(--accent))"
-          onClick={() => onNavigate('training')}
-        />
-        <ActionCard
-          label="Meal Planner"
-          status="Phase 4"
-          color="hsl(var(--muted-foreground))"
-        />
-        <ActionCard
-          label="Form Check"
-          status="Phase 3"
-          color="hsl(var(--muted-foreground))"
-        />
-        <ActionCard
-          label="Coach Portal"
-          status="Phase 5"
-          color="hsl(var(--muted-foreground))"
-        />
+      {/* GRID: Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* System Energy (Recovery Fuel) */}
+        <div className="p-4 rounded-xl bg-white border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                System Energy
+              </p>
+              <p className="text-4xl font-bold text-indigo-600 mt-2">
+                {bodyBattery > 0 ? `${bodyBattery}%` : '—'}
+              </p>
+            </div>
+            <Zap className="h-6 w-6 text-indigo-500 flex-shrink-0" />
+          </div>
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all"
+              style={{ width: `${bodyBattery}%` }}
+            />
+          </div>
+          <p className="text-xs text-indigo-700 font-semibold mt-3">
+            {bodyBattery > 0 ? getSystemEnergyStatus(bodyBattery) : '—'}
+          </p>
+        </div>
+
+        {/* Resting Heart Rate */}
+        <div className="p-4 rounded-xl bg-white border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Resting HR
+              </p>
+              <p className="text-4xl font-bold text-rose-600 mt-2">
+                {restingHR > 0 ? `${restingHR}` : '—'}
+              </p>
+              {restingHR > 0 && <p className="text-xs text-gray-600 mt-1">BPM</p>}
+            </div>
+            <Heart className="h-6 w-6 text-rose-500 flex-shrink-0" />
+          </div>
+          <button
+            onClick={() => onNavigate('readiness')}
+            className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+          >
+            Update →
+          </button>
+        </div>
+
+        {/* Average Heart Rate */}
+        <div className="p-4 rounded-xl bg-white border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Avg HR
+              </p>
+              <p className="text-4xl font-bold text-purple-600 mt-2">
+                {avgHR ? `${avgHR}` : '—'}
+              </p>
+              {avgHR && <p className="text-xs text-gray-600 mt-1">BPM</p>}
+            </div>
+            {avgHRSource === 'wearable' ? (
+              <Watch className="h-6 w-6 text-purple-500 flex-shrink-0" aria-label="From wearable device" />
+            ) : avgHRSource === 'manual' ? (
+              <Pencil className="h-6 w-6 text-purple-500 flex-shrink-0" aria-label="Manual entry" />
+            ) : (
+              <Heart className="h-6 w-6 text-gray-400 flex-shrink-0" />
+            )}
+          </div>
+          <button
+            onClick={() => onNavigate('readiness')}
+            className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+          >
+            Update →
+          </button>
+        </div>
+
+        {/* Sessions/Performance */}
+        <div className="p-4 rounded-xl bg-white border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Sessions
+              </p>
+              <p className="text-4xl font-bold text-emerald-600 mt-2">
+                {recentWorkouts?.length ?? 0}
+              </p>
+            </div>
+            <TrendingUp className="h-6 w-6 text-emerald-500 flex-shrink-0" />
+          </div>
+          <p className="text-xs text-gray-600">Last 72 hours</p>
+          <button
+            onClick={() => onNavigate('training')}
+            className="text-xs text-blue-600 hover:text-blue-700 font-semibold mt-3"
+          >
+            View History →
+          </button>
+        </div>
+      </div>
+
+      {/* NUTRITION ROW */}
+      <div className="mb-8 p-6 md:p-8 rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              Nutrition Today
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">Macros</p>
+          </div>
+          <button
+            onClick={() => onNavigate('nutrition')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-sm font-semibold"
+          >
+            <Target className="h-4 w-4" />
+            Log Meal
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Protein */}
+          <div>
+            <div className="flex justify-between items-baseline mb-3">
+              <span className="text-sm font-semibold text-gray-700">Protein</span>
+              <span className="text-xs text-gray-600 font-mono">
+                {consumed.protein}/{adjustedMacros.protein}g
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${macroPercentages.protein > 100 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${Math.min(macroPercentages.protein, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-600">
+                {Math.round(macroPercentages.protein)}% target
+              </p>
+            </div>
+          </div>
+
+          {/* Carbs */}
+          <div>
+            <div className="flex justify-between items-baseline mb-3">
+              <span className="text-sm font-semibold text-gray-700">Carbs</span>
+              <span className="text-xs text-gray-600 font-mono">
+                {consumed.carbs}/{adjustedMacros.carbs}g
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${macroPercentages.carbs > 100 ? 'bg-red-500' : 'bg-amber-500'}`}
+                  style={{ width: `${Math.min(macroPercentages.carbs, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-600">{Math.round(macroPercentages.carbs)}% target</p>
+            </div>
+          </div>
+
+          {/* Fats */}
+          <div>
+            <div className="flex justify-between items-baseline mb-3">
+              <span className="text-sm font-semibold text-gray-700">Fats</span>
+              <span className="text-xs text-gray-600 font-mono">
+                {consumed.fat}/{adjustedMacros.fat}g
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${macroPercentages.fat > 100 ? 'bg-red-500' : 'bg-rose-500'}`}
+                  style={{ width: `${Math.min(macroPercentages.fat, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-600">{Math.round(macroPercentages.fat)}% target</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TWO COLUMN: Chart + Silhouette */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Trend Chart */}
+        <div className="lg:col-span-2 p-6 md:p-8 rounded-2xl bg-white border border-gray-200 overflow-hidden">
+          <div className="mb-6">
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              7-Day Trend
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">Readiness Pattern</p>
+          </div>
+          <div className="h-64 md:h-80">
+            <WeeklyReadinessChart data={weeklyData} isLoading={weeklyLoading} />
+          </div>
+        </div>
+
+        {/* Muscle Map */}
+        <div className="p-6 md:p-8 rounded-2xl bg-white border border-gray-200 overflow-hidden">
+          <div className="mb-6">
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              Muscle Map
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">Recovery Status</p>
+          </div>
+          <div className="h-64 md:h-80 flex items-center justify-center">
+            <HumanSilhouette soreness={soreness} recentWorkouts={recentWorkouts || []} size={100} />
+          </div>
+          <p className="text-xs text-gray-600 text-center mt-4">
+            Red: &lt;24h | Orange: &lt;48h | Yellow: &lt;72h
+          </p>
+        </div>
       </div>
     </div>
-  )
-}
-
-function MicroStatCard({
-  icon,
-  label,
-  value,
-  subtext,
-  color,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  subtext: string
-  color: string
-}) {
-  return (
-    <Card className="glass-card group cursor-pointer transition-all hover:shadow-glow-blue">
-      <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
-        <div className="rounded-lg bg-secondary/50 p-3 transition-all group-hover:bg-secondary" style={{ color }}>
-          {icon}
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {label}
-          </span>
-          <span className="text-2xl font-black text-foreground">{value}</span>
-          <span className="text-xs text-muted-foreground">{subtext}</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ActionCard({
-  label,
-  status,
-  color,
-  onClick,
-}: {
-  label: string
-  status: string
-  color: string
-  onClick?: () => void
-}) {
-  const isAvailable = status === 'Available'
-
-  return (
-    <Card
-      className={`glass-card transition-all ${
-        isAvailable
-          ? 'cursor-pointer hover:shadow-glow-green'
-          : 'opacity-60 grayscale'
-      }`}
-      onClick={isAvailable ? onClick : undefined}
-    >
-      <CardContent className="flex items-center justify-between p-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground">{label}</span>
-          <span className="text-xs text-muted-foreground">{status}</span>
-        </div>
-        <div
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      </CardContent>
-    </Card>
   )
 }

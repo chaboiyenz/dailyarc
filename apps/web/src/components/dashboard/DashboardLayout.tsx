@@ -7,8 +7,12 @@ import TrainingView from './TrainingView'
 import NutritionView from './NutritionView'
 import CoachView from './CoachView'
 import AnalyticsView from './AnalyticsView'
+import UserProfile from './UserProfile'
 import CommunityFeed from '../social/CommunityFeed'
 import ChatPortal from '../social/ChatPortal'
+import AdminPanel from '../admin/AdminPanel'
+import TrainerPendingApproval from '../auth/TrainerPendingApproval'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@repo/ui'
 import { cn } from '@repo/ui/utils'
 
@@ -21,10 +25,24 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ userName, userRole, onSignOut }: DashboardLayoutProps) {
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
+  const { profile } = useAuth()
 
   const isTrainer = userRole === 'TRAINER'
+  const isAdmin = userRole === 'ADMIN'
+  const isPendingTrainer = isTrainer && profile?.trainerStatus !== 'APPROVED'
+
+  // If trainer is pending approval, show the approval screen instead of dashboard
+  if (isPendingTrainer) {
+    return <TrainerPendingApproval displayName={profile?.displayName} onSignOut={onSignOut} />
+  }
 
   const renderContent = () => {
+    // Admin panel access
+    if (isAdmin && activeSection === 'admin') {
+      return <AdminPanel />
+    }
+
+    // Regular dashboard sections
     switch (activeSection) {
       case 'dashboard':
         return isTrainer ? <TrainerDashboard /> : <TraineeDashboard onNavigate={setActiveSection} />
@@ -42,6 +60,8 @@ export default function DashboardLayout({ userName, userRole, onSignOut }: Dashb
         return <CoachView userRole={userRole} />
       case 'analytics':
         return <AnalyticsView />
+      case 'profile':
+        return <UserProfile />
       default:
         return isTrainer ? <TrainerDashboard /> : <TraineeDashboard onNavigate={setActiveSection} />
     }
@@ -56,6 +76,8 @@ export default function DashboardLayout({ userName, userRole, onSignOut }: Dashb
     messages: 'Comms',
     coach: isTrainer ? 'Client Management' : 'Coach Portal',
     analytics: 'Analytics',
+    profile: 'User Profile',
+    admin: 'Admin Panel',
   }
 
   return (
@@ -65,14 +87,15 @@ export default function DashboardLayout({ userName, userRole, onSignOut }: Dashb
         onNavigate={setActiveSection}
         userName={userName}
         userRole={userRole}
+        avatarUrl={profile?.avatarUrl}
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
       />
 
       {/* Main Content */}
-      <main className={cn('flex-1 transition-all duration-300', collapsed ? 'ml-16' : 'ml-60')}>
+      <main className={cn('flex-1 flex flex-col transition-all duration-300', collapsed ? 'ml-16' : 'ml-60')}>
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background px-6">
           <div>
             <h1 className="text-lg font-bold text-foreground">{sectionTitles[activeSection]}</h1>
             <p className="text-xs text-muted-foreground">
@@ -97,7 +120,9 @@ export default function DashboardLayout({ userName, userRole, onSignOut }: Dashb
         </header>
 
         {/* Page Content */}
-        <div className="p-6">{renderContent()}</div>
+        <div className={cn('flex-1 overflow-hidden', activeSection === 'messages' ? '' : 'p-6 overflow-auto')}>
+          {renderContent()}
+        </div>
       </main>
     </div>
   )

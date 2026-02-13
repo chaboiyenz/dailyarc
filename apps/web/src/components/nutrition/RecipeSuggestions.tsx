@@ -80,7 +80,7 @@ export default function RecipeSuggestions({ onSelectRecipe }: Props) {
                       <h4 className="font-bold text-white line-clamp-1">{recipe.label}</h4>
                       <div className="flex gap-3 text-xs text-slate-300 mt-1">
                         <span>{Math.round(recipe.calories)} cal</span>
-                        <span>{Math.round(recipe.totalNutrients.PROCNT.quantity)}g Protein</span>
+                        <span>{Math.round(recipe.macros.protein)}g Protein</span>
                       </div>
                     </div>
                     {/* Match Badge */}

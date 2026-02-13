@@ -1,105 +1,393 @@
 import { useState } from 'react'
+import { MoreVertical, Heart, MessageCircle, Trash2, Edit2, Check, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useFeed } from '@/hooks/useSocial'
-import { Card, CardContent, Button } from '@repo/ui'
+import { useComments } from '@/hooks/useComments'
+import {
+  Card,
+  CardContent,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@repo/ui'
 import { formatDistanceToNow } from 'date-fns'
+import NewPostModal from './NewPostModal'
+import type { Post, CreatePostInput } from '@repo/shared'
 
 export default function CommunityFeed() {
   const { user, profile } = useAuth()
-  const { posts, loading, createPost, toggleLike } = useFeed()
-  const [newPostContent, setNewPostContent] = useState('')
+  const { posts, loading, createPost, toggleLike, deletePost, updatePost } = useFeed()
+  const [isNewPostOpen, setIsNewPostOpen] = useState(false)
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState<string>('')
 
-  const handlePost = async () => {
-    if (!newPostContent.trim() || !profile) return
-    await createPost({ content: newPostContent, type: 'general' }, profile)
-    setNewPostContent('')
+  const handleCreatePost = async (input: CreatePostInput) => {
+    if (!profile) return
+    await createPost(input, profile)
+  }
+
+  const handleDeletePost = async (post: Post) => {
+    // Ensure only author can delete
+    if (post.userId !== user?.uid) {
+      console.warn('Unauthorized: Only post author can delete')
+      return
+    }
+    if (!confirm('Delete this post? This action cannot be undone.')) return
+    await deletePost(post.id, post.mediaUrl)
+  }
+
+  const toggleComments = (postId: string) => {
+    setExpandedComments(prev => {
+      const next = new Set(prev)
+      if (next.has(postId)) {
+        next.delete(postId)
+      } else {
+        next.add(postId)
+      }
+      return next
+    })
+  }
+
+  const startEditing = (post: Post) => {
+    setEditingPostId(post.id)
+    setEditingContent(post.content)
+  }
+
+  const cancelEditing = () => {
+    setEditingPostId(null)
+    setEditingContent('')
+  }
+
+  const saveEdit = async (postId: string, post?: Post) => {
+    // Ensure only author can edit
+    if (post && post.userId !== user?.uid) {
+      console.warn('Unauthorized: Only post author can edit')
+      return
+    }
+    if (!editingContent.trim()) return
+    await updatePost(postId, editingContent.trim())
+    cancelEditing()
   }
 
   if (loading) {
-    return <div className="p-12 text-center text-muted-foreground">Loading feed...</div>
+    return <div className="p-12 text-center text-slate-500">Loading feed...</div>
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {/* Compose */}
-      <Card className="glass-card">
+      {/* New Post Button */}
+      <Card className="bg-slate-900/40 border-slate-800 backdrop-blur-md hover:bg-slate-900/50 transition-all">
         <CardContent className="p-4">
-          <div className="flex gap-4">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.15)] text-sm font-bold text-[hsl(var(--primary))]">
-              {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div className="flex-1 space-y-3">
-              <textarea
-                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
-                placeholder="Share your progress..."
-                rows={2}
-                value={newPostContent}
-                onChange={e => setNewPostContent(e.target.value)}
-              />
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handlePost} disabled={!newPostContent.trim()}>
-                  Post
-                </Button>
-              </div>
-            </div>
-          </div>
+          <Button
+            onClick={() => setIsNewPostOpen(true)}
+            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold"
+          >
+            + Share Your Progress
+          </Button>
         </CardContent>
       </Card>
 
       {/* Feed */}
       <div className="space-y-4">
+        {posts.length === 0 && (
+          <Card className="bg-slate-900/40 border-slate-800 backdrop-blur-md">
+            <CardContent className="p-12 text-center text-slate-400">
+              No posts yet. Be the first to share your fitness journey!
+            </CardContent>
+          </Card>
+        )}
+
         {posts.map(post => (
-          <Card key={post.id} className="glass-card hover:bg-card/40 transition-colors">
+          <Card
+            key={post.id}
+            className="bg-slate-900/40 border-slate-800 backdrop-blur-md hover:bg-slate-900/50 transition-all"
+          >
             <CardContent className="p-6">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold text-muted-foreground">
-                  {post.authorName.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground">{post.authorName}</span>
-                    <span className="text-xs text-muted-foreground">
+              {/* Post Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 text-sm font-bold text-white">
+                    {post.authorName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white">{post.authorName}</span>
+                      <RoleBadge role={post.userRole} />
+                    </div>
+                    <span className="text-xs text-slate-400">
                       {post.createdAt
                         ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true })
                         : 'Just now'}
                     </span>
-                  </div>
-                  <p className="text-sm text-foreground/90 leading-relaxed">{post.content}</p>
-
-                  {/* Actions */}
-                  <div className="mt-4 flex items-center gap-4">
-                    <button
-                      className={`flex items-center gap-1.5 text-xs font-semibold ${post.likes.includes(user?.uid || '') ? 'text-[hsl(var(--primary))]' : 'text-muted-foreground hover:text-foreground'}`}
-                      onClick={() => user && toggleLike(post.id, user.uid, post.likes)}
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill={post.likes.includes(user?.uid || '') ? 'currentColor' : 'none'}
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {post.likes.length}
-                    </button>
+                    {post.updatedAt &&
+                      post.createdAt &&
+                      post.updatedAt.toMillis() !== post.createdAt.toMillis() && (
+                        <span className="text-xs text-slate-500 ml-2">(edited)</span>
+                      )}
                   </div>
                 </div>
+
+                {/* Actions Menu (only for own posts) */}
+                {post.userId === user?.uid && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                      <DropdownMenuItem
+                        onClick={() => startEditing(post)}
+                        className="text-slate-200 focus:text-slate-100 focus:bg-slate-700 cursor-pointer"
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeletePost(post)}
+                        className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
+
+              {/* Post Content - Editable */}
+              {editingPostId === post.id ? (
+                <div className="mb-4 space-y-3">
+                  <textarea
+                    value={editingContent}
+                    onChange={e => setEditingContent(e.target.value)}
+                    className="w-full min-h-[100px] bg-slate-800/50 border border-slate-700 rounded-lg p-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                    maxLength={500}
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">{editingContent.length}/500</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditing}
+                        className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => saveEdit(post.id, post)}
+                        disabled={!editingContent.trim()}
+                        className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-200 leading-relaxed mb-4">{post.content}</p>
+              )}
+
+              {/* Media */}
+              {post.mediaUrl && post.mediaType === 'image' && editingPostId !== post.id && (
+                <div className="mb-4 rounded-xl overflow-hidden bg-slate-800 aspect-video border border-slate-700">
+                  <img
+                    src={post.mediaUrl}
+                    alt="Post media"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {post.mediaUrl && post.mediaType === 'video' && editingPostId !== post.id && (
+                <div className="mb-4 rounded-xl overflow-hidden bg-slate-800 aspect-video border border-slate-700">
+                  <video src={post.mediaUrl} className="w-full h-full" controls muted playsInline />
+                </div>
+              )}
+
+              {editingPostId !== post.id && (
+                <>
+                  {/* Actions Row */}
+                  <div className="flex items-center gap-4 pb-4 border-b border-slate-700">
+                    <button
+                      className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${
+                        post.likes.includes(user?.uid || '')
+                          ? 'text-cyan-400'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      onClick={() => user && toggleLike(post.id, user.uid, post.likes)}
+                    >
+                      <Heart
+                        className="w-4 h-4"
+                        fill={post.likes.includes(user?.uid || '') ? 'currentColor' : 'none'}
+                      />
+                      {post.likes.length}
+                    </button>
+
+                    <button
+                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors"
+                      onClick={() => toggleComments(post.id)}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <CommentCount postId={post.id} />
+                    </button>
+                  </div>
+
+                  {/* Comments Section */}
+                  {expandedComments.has(post.id) && profile && (
+                    <CommentsSection
+                      postId={post.id}
+                      user={{
+                        uid: profile.uid,
+                        displayName: profile.displayName || 'Athlete',
+                        role: (profile.role === 'ADMIN' ? 'TRAINEE' : profile.role) || 'TRAINEE',
+                      }}
+                    />
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* New Post Modal */}
+      {user && (
+        <NewPostModal
+          isOpen={isNewPostOpen}
+          onClose={() => setIsNewPostOpen(false)}
+          onSubmit={handleCreatePost}
+        />
+      )}
     </div>
+  )
+}
+
+function CommentCount({ postId }: { postId: string }) {
+  const { comments, loading } = useComments(postId)
+  if (loading) return <span>--</span>
+  return <span>{comments.length}</span>
+}
+
+function CommentsSection({
+  postId,
+  user,
+}: {
+  postId: string
+  user: { uid: string; displayName?: string; role: 'TRAINEE' | 'TRAINER' }
+}) {
+  const { comments, addComment } = useComments(postId)
+  const [newCommentText, setNewCommentText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleAddComment = async () => {
+    const content = newCommentText.trim()
+    if (!content || !user) return
+
+    setSubmitting(true)
+    const success = await addComment({
+      userId: user.uid,
+      userName: user.displayName || 'Anonymous',
+      userRole: user.role,
+      content,
+    })
+
+    if (success) {
+      setNewCommentText('')
+    }
+    setSubmitting(false)
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      {/* Existing Comments */}
+      {comments.length > 0 && (
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {comments.map(comment => (
+            <div key={comment.id} className="flex gap-2">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-xs font-bold text-white">
+                {comment.userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-xs font-semibold text-slate-200">{comment.userName}</span>
+                  <RoleBadge role={comment.userRole} size="sm" />
+                  <span className="text-xs text-slate-500">
+                    {comment.createdAt
+                      ? formatDistanceToNow(comment.createdAt.toDate(), {
+                          addSuffix: true,
+                        })
+                      : 'Just now'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">{comment.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Comment Input */}
+      {user && (
+        <div className="flex gap-2 pt-2 border-t border-slate-700">
+          <input
+            type="text"
+            placeholder="Add a comment..."
+            className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            value={newCommentText}
+            onChange={e => setNewCommentText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleAddComment()
+              }
+            }}
+            disabled={submitting}
+            maxLength={500}
+          />
+          <Button
+            size="sm"
+            onClick={handleAddComment}
+            disabled={!newCommentText.trim() || submitting}
+            className="bg-cyan-500 hover:bg-cyan-600 text-white text-xs shrink-0"
+          >
+            Post
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RoleBadge({
+  role,
+  size = 'default',
+}: {
+  role: 'TRAINEE' | 'TRAINER'
+  size?: 'default' | 'sm'
+}) {
+  const sizeClasses = size === 'sm' ? 'text-[10px] px-2 py-1' : 'text-xs px-3 py-1.5'
+  const colorClasses =
+    role === 'TRAINER'
+      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-400 shadow-lg shadow-amber-500/20'
+      : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-400 shadow-lg shadow-cyan-500/20'
+
+  return (
+    <span
+      className={`${sizeClasses} ${colorClasses} rounded-full border font-bold uppercase whitespace-nowrap tracking-wider`}
+    >
+      {role === 'TRAINER' ? '👨‍🏫 Trainer' : '🎯 Trainee'}
+    </span>
   )
 }

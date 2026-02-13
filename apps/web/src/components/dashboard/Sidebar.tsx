@@ -9,12 +9,15 @@ export type NavSection =
   | 'messages'
   | 'coach'
   | 'analytics'
+  | 'profile'
+  | 'admin'
 
 interface SidebarProps {
   active: NavSection
   onNavigate: (section: NavSection) => void
   userName: string
   userRole: string
+  avatarUrl?: string
   collapsed: boolean
   onToggle: () => void
 }
@@ -189,6 +192,7 @@ export default function Sidebar({
   onNavigate,
   userName,
   userRole,
+  avatarUrl,
   collapsed,
   onToggle,
 }: SidebarProps) {
@@ -257,14 +261,57 @@ export default function Sidebar({
               </button>
             </li>
           ))}
+          
+          {/* Admin Panel - only for ADMIN users */}
+          {userRole === 'ADMIN' && (
+            <li>
+              <button
+                onClick={() => onNavigate('admin')}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                  active === 'admin'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-[hsl(var(--sidebar-foreground))] hover:bg-emerald-500/10 hover:text-emerald-400'
+                )}
+              >
+                <span className="flex-shrink-0">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 2v20m-7-5h14M5 9h14M5 5h14" />
+                  </svg>
+                </span>
+                {!collapsed && <span>Admin</span>}
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
 
-      {/* User */}
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.15)] text-xs font-bold text-[hsl(var(--primary))]">
-            {userName.charAt(0).toUpperCase()}
+      {/* Bottom Navigation - Profile Section */}
+      <div className="border-t border-border p-3 space-y-2">
+        <button
+          onClick={() => onNavigate('profile')}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+            active === 'profile'
+              ? 'bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--sidebar-active))]'
+              : 'text-[hsl(var(--sidebar-foreground))] hover:bg-secondary hover:text-foreground'
+          )}
+        >
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.15)] text-xs font-bold text-[hsl(var(--primary))] overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={userName} className="h-full w-full object-cover" />
+            ) : (
+              userName.charAt(0).toUpperCase()
+            )}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
@@ -272,7 +319,7 @@ export default function Sidebar({
               <p className="truncate text-xs text-[hsl(var(--sidebar-foreground))]">{userRole}</p>
             </div>
           )}
-        </div>
+        </button>
       </div>
     </aside>
   )

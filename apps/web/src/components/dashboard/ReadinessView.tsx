@@ -1,12 +1,18 @@
 import { useState, useMemo } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Card, CardContent, CardHeader, CardTitle, Slider, Toast } from '@repo/ui'
+import { Check } from 'lucide-react'
 import {
-  calculateReadiness,
   calculateReadinessFactor,
+  calculateReadinessAverage,
+  getRecommendation,
   calculateDynamicMacros,
 } from '@repo/shared/logic'
+import { ReadinessFormSchema, type ReadinessInput, type ReadinessForm } from '@repo/shared/schemas/readiness'
 import { useAuth } from '@/hooks/useAuth'
 import { useSubmitReadiness } from '@/hooks/useSubmitReadiness'
+import { useTodayReadiness } from '@/hooks/useTodayReadiness'
 import MacroRing from './MacroRing'
 
 const SORENESS_ZONES = [
@@ -20,64 +26,130 @@ const SORENESS_ZONES = [
   'Core',
 ]
 
+const SLIDER_META: {
+  key: keyof ReadinessInput
+  label: string
+  lowLabel: string
+  highLabel: string
+  description: string
+}[] = [
+  {
+    key: 'sleep',
+    label: 'Sleep Quality',
+    lowLabel: 'Terrible',
+    highLabel: 'Excellent',
+    description: 'How well did you sleep last night?',
+  },
+  {
+    key: 'soreness',
+    label: 'Muscle Soreness',
+    lowLabel: 'Extreme',
+    highLabel: 'None',
+    description: 'How sore are your muscles?',
+  },
+  {
+    key: 'stress',
+    label: 'Stress Level',
+    lowLabel: 'Very High',
+    highLabel: 'Very Low',
+    description: 'How stressed do you feel?',
+  },
+  {
+    key: 'energy',
+    label: 'Energy Level',
+    lowLabel: 'Exhausted',
+    highLabel: 'Fully Charged',
+    description: 'How energized do you feel?',
+  },
+]
+
 export default function ReadinessView() {
   const { user } = useAuth()
   const submitReadiness = useSubmitReadiness()
+  const { data: todayReadiness, isLoading: isCheckingToday } = useTodayReadiness(user?.uid)
 
-  const [sleep, setSleep] = useState(7)
-  const [stress, setStress] = useState(5)
-  const [soreness, setSoreness] = useState(5)
-  const [fatigue, setFatigue] = useState(30)
+  // React Hook Form setup with validation
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { isValid },
+  } = useForm<ReadinessForm>({
+    resolver: zodResolver(ReadinessFormSchema),
+    defaultValues: {
+      sleep: 3,
+      soreness: 3,
+      stress: 3,
+      energy: 3,
+      sleepQuality: 75,
+      restingHR: 65,
+    },
+    mode: 'onChange',
+  })
+
+  // Watch form values for real-time updates
+  const sleep = watch('sleep')
+  const soreness = watch('soreness')
+  const stress = watch('stress')
+  const energy = watch('energy')
+  const sleepQuality = watch('sleepQuality')
+  const restingHR = watch('restingHR')
+
+  // Additional state
   const [sorenessZones, setSorenessZones] = useState<string[]>([])
-  const [submitted, setSubmitted] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [toast, setToast] = useState<{
     visible: boolean
     message: string
     variant: 'default' | 'destructive' | 'success'
-  }>({
-    visible: false,
-    message: '',
-    variant: 'default',
-  })
+  }>({ visible: false, message: '', variant: 'default' })
 
-  const showToast = (message: string, variant: 'default' | 'destructive' | 'success' = 'default') => {
+  const showToast = (
+    message: string,
+    variant: 'default' | 'destructive' | 'success' = 'default'
+  ) => {
     setToast({ visible: true, message, variant })
-    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 3000)
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000)
   }
 
-  const readinessScore = useMemo(() => {
-    return calculateReadiness({
-      sleepQuality: sleep,
-      stressLevel: 10 - stress, // invert: low stress = high score
-      soreness: 10 - soreness, // invert: low soreness = high score
-      fatigue,
-    })
-  }, [sleep, stress, soreness, fatigue])
+  // Build the input object from form values
+  const readinessInput: ReadinessInput = useMemo(
+    () => ({ sleep, soreness, stress, energy }),
+    [sleep, soreness, stress, energy]
+  )
 
-  const recommendation = useMemo(() => {
-    if (readinessScore >= 8) return { label: 'INTENSE', color: 'hsl(var(--chart-protein))', desc: 'You are primed for a high-intensity session.' }
-    if (readinessScore >= 6) return { label: 'MODERATE', color: 'hsl(var(--chart-carbs))', desc: 'A standard session is recommended.' }
-    if (readinessScore >= 4) return { label: 'LIGHT', color: 'hsl(var(--chart-fat))', desc: 'Focus on technique and mobility work.' }
-    return { label: 'REST', color: 'hsl(var(--chart-warning))', desc: 'Active recovery or complete rest day advised.' }
-  }, [readinessScore])
+  // --- LIVE RF CALCULATION (pure function from @repo/shared) ---------------
+  const readinessFactor = useMemo(() => calculateReadinessFactor(readinessInput), [readinessInput])
 
-  // Dynamic macros based on readiness factor using shared logic
-  const readinessFactor = useMemo(() => {
-    return calculateReadinessFactor(readinessScore)
-  }, [readinessScore])
+  const readinessAverage = useMemo(
+    () => calculateReadinessAverage(readinessInput),
+    [readinessInput]
+  )
 
+  const recommendation = useMemo(() => getRecommendation(readinessFactor), [readinessFactor])
+
+  // Body Battery is auto-calculated from energy slider (1-5 → 0-100%)
+  const bodyBattery = useMemo(() => Math.round(((energy - 1) / 4) * 100), [energy])
+
+  // Dynamic macros adjusted by RF
   const baseMacros = { protein: 180, carbs: 250, fat: 70 }
-  const adjustedMacros = useMemo(() => {
-    return calculateDynamicMacros(baseMacros, readinessFactor)
-  }, [readinessFactor])
+  const adjustedMacros = useMemo(
+    () => calculateDynamicMacros(baseMacros, readinessFactor),
+    [readinessFactor]
+  )
+
+  const values: Record<keyof ReadinessInput, number> = {
+    sleep,
+    soreness,
+    stress,
+    energy,
+  }
 
   const toggleZone = (zone: string) => {
-    setSorenessZones(prev =>
-      prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]
-    )
+    setSorenessZones(prev => (prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]))
   }
 
-  const handleSubmit = async () => {
+  const onSubmit = async () => {
     if (!user?.uid) {
       showToast('Please sign in to submit readiness check', 'destructive')
       return
@@ -86,26 +158,44 @@ export default function ReadinessView() {
     try {
       await submitReadiness.mutateAsync({
         userId: user.uid,
-        input: {
-          sleepQuality: sleep,
-          stressLevel: 10 - stress, // Store inverted value
-          soreness: 10 - soreness, // Store inverted value
-          fatigue,
-          sorenessZones,
+        input: readinessInput,
+        sorenessZones,
+        bioMetrics: {
+          sleepQuality,
+          restingHR: restingHR || undefined,
+          bodyBattery,
         },
       })
 
-      setSubmitted(true)
-      showToast('Readiness check submitted successfully!', 'success')
-    } catch (error) {
-      console.error('Failed to submit readiness:', error)
+      setShowConfirmDialog(false)
+      showToast('Daily readiness check submitted!', 'success')
+    } catch {
       showToast('Failed to submit readiness. Please try again.', 'destructive')
     }
   }
 
+  const handleSubmitClick = () => {
+    setShowConfirmDialog(true)
+  }
+
+  // Recommendation display config
+  const recMeta: Record<string, { color: string; desc: string }> = {
+    REST: {
+      color: 'hsl(var(--chart-warning))',
+      desc: 'Active recovery or complete rest day advised.',
+    },
+    LIGHT: { color: 'hsl(var(--chart-fat))', desc: 'Focus on technique and mobility work.' },
+    MODERATE: { color: 'hsl(var(--chart-carbs))', desc: 'A standard session is recommended.' },
+    INTENSE: {
+      color: 'hsl(var(--chart-protein))',
+      desc: 'You are primed for a high-intensity session.',
+    },
+  }
+  const rec = recMeta[recommendation]
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Readiness Score Hero */}
+      {/* ── Hero: Live RF Display ─────────────────────────────────────── */}
       <Card className="border-border bg-card">
         <CardContent className="flex flex-col items-center gap-4 p-8 lg:flex-row lg:justify-between">
           <div className="flex flex-col items-center gap-2 lg:items-start">
@@ -115,26 +205,35 @@ export default function ReadinessView() {
             </p>
           </div>
 
-          {/* Score Ring */}
+          {/* Live RF Ring — the "dancing" number */}
           <div className="relative flex h-44 w-44 items-center justify-center">
             <svg width="176" height="176" className="-rotate-90">
-              <circle cx="88" cy="88" r="76" fill="none" stroke="hsl(var(--secondary))" strokeWidth="10" />
               <circle
                 cx="88"
                 cy="88"
                 r="76"
                 fill="none"
-                stroke={recommendation.color}
+                stroke="hsl(var(--secondary))"
+                strokeWidth="10"
+              />
+              <circle
+                cx="88"
+                cy="88"
+                r="76"
+                fill="none"
+                stroke={rec.color}
                 strokeWidth="10"
                 strokeDasharray={2 * Math.PI * 76}
-                strokeDashoffset={2 * Math.PI * 76 * (1 - readinessScore / 10)}
+                strokeDashoffset={2 * Math.PI * 76 * (1 - (readinessFactor - 0.8) / 0.4)}
                 strokeLinecap="round"
                 className="ring-animate"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-black text-foreground">{readinessScore.toFixed(1)}</span>
-              <span className="text-xs font-semibold text-muted-foreground">/ 10</span>
+              <span className="text-4xl font-black text-foreground transition-all duration-300">
+                {readinessFactor.toFixed(2)}x
+              </span>
+              <span className="text-xs font-semibold text-muted-foreground">RF MULTIPLIER</span>
             </div>
           </div>
 
@@ -142,99 +241,50 @@ export default function ReadinessView() {
           <div className="flex flex-col items-center gap-2 lg:items-end">
             <div
               className="rounded-full px-5 py-2 text-sm font-bold tracking-wider"
-              style={{ backgroundColor: `${recommendation.color}20`, color: recommendation.color }}
+              style={{ backgroundColor: `${rec.color}20`, color: rec.color }}
             >
-              {recommendation.label}
+              {recommendation}
             </div>
             <p className="max-w-[220px] text-center text-xs text-muted-foreground lg:text-right">
-              {recommendation.desc}
+              {rec.desc}
             </p>
+            <span className="font-mono text-xs text-muted-foreground">
+              Avg Score: {readinessAverage.toFixed(1)} / 5
+            </span>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input Form */}
+        {/* ── Input Form: Four 1-5 Sliders ─────────────────────────────── */}
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="text-foreground">Biometric Input</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
-            {/* Sleep */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">Sleep Quality</label>
-                <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">{sleep}/10</span>
+            {SLIDER_META.map(({ key, label, lowLabel, highLabel, description }) => (
+              <div key={key} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">{label}</label>
+                  <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">
+                    {values[key]} / 5
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{description}</p>
+                <Slider
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={[values[key]]}
+                  onValueChange={v => setValue(key, v[0])}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{lowLabel}</span>
+                  <span>{highLabel}</span>
+                </div>
               </div>
-              <Slider
-                min={1}
-                max={10}
-                step={1}
-                value={[sleep]}
-                onValueChange={(value) => setSleep(value[0])}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Poor</span><span>Excellent</span>
-              </div>
-            </div>
-
-            {/* Stress */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">Stress Level</label>
-                <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">{stress}/10</span>
-              </div>
-              <Slider
-                min={1}
-                max={10}
-                step={1}
-                value={[stress]}
-                onValueChange={(value) => setStress(value[0])}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Low</span><span>High</span>
-              </div>
-            </div>
-
-            {/* Soreness */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">Muscle Soreness</label>
-                <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">{soreness}/10</span>
-              </div>
-              <Slider
-                min={1}
-                max={10}
-                step={1}
-                value={[soreness]}
-                onValueChange={(value) => setSoreness(value[0])}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>None</span><span>Extreme</span>
-              </div>
-            </div>
-
-            {/* Fatigue */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">Fatigue Level</label>
-                <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">{fatigue}%</span>
-              </div>
-              <Slider
-                min={0}
-                max={100}
-                step={5}
-                value={[fatigue]}
-                onValueChange={(value) => setFatigue(value[0])}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Fresh</span><span>Exhausted</span>
-              </div>
-            </div>
+            ))}
 
             {/* Soreness Zones */}
             <div className="flex flex-col gap-2">
@@ -256,21 +306,105 @@ export default function ReadinessView() {
               </div>
             </div>
 
-            <Button
-              onClick={handleSubmit}
-              className="mt-2 h-12 text-base font-bold"
-              disabled={submitReadiness.isPending}
-            >
-              {submitReadiness.isPending
-                ? 'Submitting...'
-                : submitted
-                  ? 'Update Readiness'
-                  : 'Submit Readiness Check'}
-            </Button>
+            {/* Bio-Metrics Section */}
+            <div className="border-t border-border pt-4">
+              <h3 className="text-sm font-bold text-foreground mb-4">Manual Bio-Metrics</h3>
+
+              {/* Sleep Quality */}
+              <div className="flex flex-col gap-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">Sleep Quality</label>
+                  <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">
+                    {sleepQuality}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Rate your sleep from 1-100</p>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={sleepQuality}
+                  onChange={e => setValue('sleepQuality', Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+
+              {/* Resting HR */}
+              <div className="flex flex-col gap-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">Resting HR (BPM)</label>
+                  <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">
+                    {restingHR}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Measure upon waking (typical: 60-100)
+                </p>
+                <input
+                  type="number"
+                  min={40}
+                  max={120}
+                  value={restingHR || ''}
+                  onChange={e => setValue('restingHR', e.target.value ? Number(e.target.value) : null)}
+                  className="bg-slate-900 border border-slate-800 rounded px-3 py-2 text-sm text-foreground"
+                  placeholder="Optional"
+                />
+              </div>
+
+              {/* Body Battery / Energy Level — Auto calculated from Energy slider */}
+              <div className="flex flex-col gap-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">Body Battery</label>
+                  <span className="font-mono text-sm font-bold text-[hsl(var(--primary))]">
+                    {bodyBattery}%
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Auto-calculated from Energy Level above
+                </p>
+                <div className="w-full h-2 bg-slate-800 rounded-lg flex">
+                  <div
+                    className="bg-gradient-to-r from-green-600 to-blue-600 rounded-lg transition-all"
+                    style={{ width: `${bodyBattery}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {todayReadiness && !isCheckingToday ? (
+              <div className="mt-4 flex flex-col gap-3 rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                  <span className="font-bold text-green-500">Daily Check-in Complete</span>
+                </div>
+                <p className="text-sm text-muted-foreground">You've already submitted your readiness check for today.</p>
+                <Button
+                  onClick={handleSubmitClick}
+                  variant="outline"
+                  className="mt-2 h-10 text-sm font-bold"
+                  disabled={!isValid || submitReadiness.isPending}
+                >
+                  Update Today's Readiness
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleSubmitClick}
+                className="mt-2 h-12 text-base font-bold"
+                disabled={!isValid || submitReadiness.isPending || isCheckingToday}
+              >
+                {submitReadiness.isPending
+                  ? 'Submitting...'
+                  : isCheckingToday
+                    ? 'Checking...'
+                    : 'Submit Readiness Check'}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
-        {/* Macro Targets */}
+        {/* ── Right Column: Macro Targets + Factor Breakdown ──────────── */}
         <div className="flex flex-col gap-6">
           <Card className="border-border bg-card">
             <CardHeader>
@@ -309,26 +443,58 @@ export default function ReadinessView() {
             </CardContent>
           </Card>
 
-          {/* Readiness Factor Explanation */}
+          {/* Factor Breakdown */}
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-foreground">Readiness Factor Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <FactorBar label="Sleep Quality" value={sleep} max={10} color="hsl(var(--chart-protein))" />
-              <FactorBar label="Stress (inverted)" value={10 - stress} max={10} color="hsl(var(--chart-carbs))" />
-              <FactorBar label="Soreness (inverted)" value={10 - soreness} max={10} color="hsl(var(--chart-fat))" />
-              <FactorBar label="Energy Reserve" value={100 - fatigue} max={100} color="hsl(var(--accent))" />
+              {SLIDER_META.map(({ key, label }) => (
+                <FactorBar key={key} label={label} value={values[key]} max={5} color={rec.color} />
+              ))}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Toast Notification */}
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md border-border bg-card">
+            <CardHeader>
+              <CardTitle className="text-foreground">Confirm Submission</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Ready to submit your daily readiness check with a Readiness Factor of{' '}
+                <span className="font-mono font-bold text-foreground">{readinessFactor.toFixed(2)}x</span>?
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowConfirmDialog(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={onSubmit}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                  disabled={submitReadiness.isPending}
+                >
+                  {submitReadiness.isPending ? 'Submitting...' : 'Confirm'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Toast */}
       <Toast
         variant={toast.variant}
         visible={toast.visible}
-        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        onClose={() => setToast(prev => ({ ...prev, visible: false }))}
       >
         {toast.message}
       </Toast>
@@ -336,13 +502,25 @@ export default function ReadinessView() {
   )
 }
 
-function FactorBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+function FactorBar({
+  label,
+  value,
+  max,
+  color,
+}: {
+  label: string
+  value: number
+  max: number
+  color: string
+}) {
   const pct = (value / max) * 100
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <span className="font-mono text-xs font-bold text-foreground">{value}/{max}</span>
+        <span className="font-mono text-xs font-bold text-foreground">
+          {value}/{max}
+        </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
         <div

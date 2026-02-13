@@ -4,6 +4,7 @@
  * This module defines the exercise progression system used in DailyArc.
  * Each exercise has a level, prerequisites, and mastery criteria.
  */
+import { SkillNode } from '../schemas/exercise'
 
 export interface ExerciseNode {
   /** Unique identifier for the exercise */
@@ -109,6 +110,164 @@ export const CALISTHENICS_TREE: ExerciseNode[] = [
     category: 'push',
     prerequisites: ['archer-pu', 'pseudo-planche'], // Dual dependency example
   },
+
+  // ─── Pull Progression ───
+  {
+    id: 'dead-hang',
+    name: 'Dead Hang',
+    level: 1,
+    sets: 3,
+    reps: 20, // 20 seconds hold
+    description: 'Hang from bar with straight arms, relax shoulders.',
+    category: 'pull',
+    prerequisites: [],
+  },
+  {
+    id: 'flex-hang',
+    name: 'Flexed Arm Hang',
+    level: 2,
+    sets: 3,
+    reps: 15, // 15 seconds hold
+    description: 'Hang with arms bent at 90 degrees.',
+    category: 'pull',
+    prerequisites: ['dead-hang'],
+  },
+  {
+    id: 'neg-pullup',
+    name: 'Negative Pullups',
+    level: 3,
+    sets: 3,
+    reps: 8,
+    description: 'Jump to top, lower slowly for 3-5 seconds.',
+    category: 'pull',
+    prerequisites: ['flex-hang'],
+  },
+  {
+    id: 'pullup',
+    name: 'Strict Pullups',
+    level: 4,
+    sets: 4,
+    reps: 8,
+    description: 'Full range of motion, chin above bar.',
+    category: 'pull',
+    prerequisites: ['neg-pullup'],
+  },
+  {
+    id: 'dip',
+    name: 'Dips (Parallel Bars)',
+    level: 4,
+    sets: 3,
+    reps: 8,
+    description: 'Bodyweight dip with 90-degree elbow bend.',
+    category: 'push',
+    prerequisites: ['standard-pu'],
+  },
+  {
+    id: 'muscle-up-transition',
+    name: 'Muscle-Up Transition',
+    level: 6,
+    sets: 3,
+    reps: 5,
+    description: 'Jump to muscle-up top position, hold 2 seconds, dismount.',
+    category: 'pull',
+    prerequisites: ['pullup'],
+  },
+  {
+    id: 'muscle-up',
+    name: 'Strict Muscle-Up',
+    level: 8,
+    sets: 3,
+    reps: 3,
+    description: 'Pull above rings, press to support position.',
+    category: 'pull',
+    prerequisites: ['muscle-up-transition', 'dip'],
+  },
+
+  // ─── Core Progression ───
+  {
+    id: 'plank-30',
+    name: 'Plank Hold (30s)',
+    level: 1,
+    sets: 3,
+    reps: 30, // 30 second hold
+    description: 'Hold plank position with neutral spine.',
+    category: 'core',
+    prerequisites: [],
+  },
+  {
+    id: 'plank-60',
+    name: 'Plank Hold (60s)',
+    level: 2,
+    sets: 3,
+    reps: 60, // 60 second hold
+    description: 'Extended plank hold, 60 seconds per rep.',
+    category: 'core',
+    prerequisites: ['plank-30'],
+  },
+  {
+    id: 'l-sit-tuck',
+    name: 'Tuck L-Sit',
+    level: 5,
+    sets: 3,
+    reps: 5, // 5-10 second holds
+    description: 'Legs tucked, hold body off ground 5-15 seconds.',
+    category: 'core',
+    prerequisites: ['plank-60', 'standard-pu'],
+  },
+  {
+    id: 'l-sit-full',
+    name: 'Full L-Sit',
+    level: 7,
+    sets: 3,
+    reps: 3, // 5-10 second holds
+    description: 'Legs straight parallel to ground, upper body support.',
+    category: 'core',
+    prerequisites: ['l-sit-tuck'],
+  },
+  {
+    id: 'dragon-flag-negative',
+    name: 'Dragon Flag Negative',
+    level: 7,
+    sets: 3,
+    reps: 5,
+    description: 'Jump to top, shoulders on bench, lower with control.',
+    category: 'core',
+    prerequisites: ['l-sit-full'],
+  },
+  {
+    id: 'dragon-flag',
+    name: 'Full Dragon Flag',
+    level: 9,
+    sets: 3,
+    reps: 5,
+    description: 'Full body raise from shoulders only, strict form.',
+    category: 'core',
+    prerequisites: ['dragon-flag-negative'],
+  },
+
+  // ─── Advanced Push ───
+  {
+    id: 'planche-lean',
+    name: 'Planche Lean',
+    level: 8,
+    sets: 3,
+    reps: 5, // 5-15 second holds
+    description: 'Hands by hips, lean 45° forward, hold.',
+    category: 'push',
+    prerequisites: ['pseudo-planche'],
+  },
+
+  // ─── Advanced Pull ───
+  {
+    id: 'front-lever-hold',
+    name: 'Front Lever Hold',
+    level: 9,
+    sets: 3,
+    reps: 3, // 3-10 second holds
+    description: 'Body parallel to ground, inverted position.',
+    category: 'pull',
+    prerequisites: ['pullup', 'l-sit-full'],
+  },
 ]
 
 /**
@@ -186,4 +345,73 @@ export function getCurrentExercise(completedLevel: number): ExerciseNode | null 
  */
 export function getProgressionPercentage(completedLevel: number): number {
   return Math.round((completedLevel / CALISTHENICS_TREE.length) * 100)
+}
+
+// =============================================================================
+// Phase 2: Generic Tree Logic (Hybrid Support)
+// =============================================================================
+
+/**
+ * Generic version of isExerciseUnlocked that works for any SkillNode tree.
+ */
+export function isNodeUnlocked(
+  nodeId: string,
+  completedNodeIds: string[],
+  tree: SkillNode[]
+): boolean {
+  const node = tree.find(n => n.id === nodeId)
+  if (!node) {
+    console.warn(`[isNodeUnlocked] ❌ Node "${nodeId}" not found in tree`)
+    return false
+  }
+
+  // If no prerequisites, it's unlocked
+  if (node.prerequisites.length === 0) {
+    return true
+  }
+
+  // Check if all prerequisites are completed
+  const allPrereqsMet = node.prerequisites.every(prereqId => completedNodeIds.includes(prereqId))
+
+  // Detailed logging for debugging
+  if (!allPrereqsMet) {
+    const missingPrereqs = node.prerequisites.filter(p => !completedNodeIds.includes(p))
+    console.log(`[isNodeUnlocked] ⚠️ "${node.name}" (${nodeId}) - prerequisites NOT met`, {
+      allPrerequisites: node.prerequisites,
+      completedPrerequisites: node.prerequisites.filter(p => completedNodeIds.includes(p)),
+      missingPrerequisites: missingPrereqs,
+    })
+  }
+
+  return allPrereqsMet
+}
+
+/**
+ * Checks if cross-modality prerequisites are met (e.g. Squat 1.5x BW for Shrimp Squat).
+ * @deprecated This function is not currently used. User schema doesn't have powerliftingStats yet.
+ */
+export function areCrossPrerequisitesMet(node: SkillNode): boolean {
+  // TODO: Implement when User schema includes powerliftingStats
+  if (!node.crossPrerequisites || node.crossPrerequisites.length === 0) return true
+  return true
+}
+
+/**
+ * Generic version of getNextProgressions.
+ */
+export function getNextProgressionsFromTree(
+  completedIds: string[],
+  tree: SkillNode[]
+): SkillNode[] {
+  return tree.filter(node => {
+    const isCompleted = completedIds.includes(node.id)
+    if (isCompleted) return false
+
+    const standardUnlocked = isNodeUnlocked(node.id, completedIds, tree)
+    // improved: we should also check cross prereqs here if we had user stats,
+    // but this function signature doesn't have user stats.
+    // The consumer should filter by cross-prereqs if needed, or we update signature.
+    // For now, let's return standard unlocked nodes.
+    return standardUnlocked
+  })
 }

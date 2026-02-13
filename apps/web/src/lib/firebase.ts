@@ -6,6 +6,7 @@ import {
   memoryLocalCache,
   type Firestore,
 } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -44,6 +45,10 @@ console.log(
 console.log('🔍 Expected Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID)
 
 export { db }
+
+// 4. Firebase Storage
+export const storage = getStorage(app)
+
 export const googleProvider = new GoogleAuthProvider()
 export const githubProvider = new GithubAuthProvider()
 export const emailProvider = new EmailAuthProvider()

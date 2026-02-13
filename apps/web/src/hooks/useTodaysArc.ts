@@ -24,7 +24,7 @@ export function useTodaysArc(userId: string | null) {
     // Generate today's document ID
     const today = new Date()
     const dateString = today.toISOString().split('T')[0] // YYYY-MM-DD
-    const docId = `${dateString}_${userId}`
+    const docId = `${userId}_${dateString}`
 
     // Set up real-time listener
     const docRef = doc(db, 'dailyArcs', docId)
@@ -89,7 +89,7 @@ export function useTodaysArcQuery(userId: string | null) {
       // Generate today's document ID
       const today = new Date()
       const dateString = today.toISOString().split('T')[0] // YYYY-MM-DD
-      const docId = `${dateString}_${userId}`
+      const docId = `${userId}_${dateString}`
 
       // Fetch document (one-time)
       const { getDoc } = await import('firebase/firestore')

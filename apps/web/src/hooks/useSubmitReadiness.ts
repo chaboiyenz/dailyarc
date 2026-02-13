@@ -1,90 +1,97 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { calculateReadiness } from '@repo/shared/logic'
-import type { DailyLog } from '@repo/shared'
-
-interface ReadinessInput {
-  sleepQuality: number
-  stressLevel: number
-  soreness: number
-  fatigue: number
-  sorenessZones?: string[]
-  notes?: string
-}
+import {
+  calculateReadinessFactor,
+  calculateReadinessAverage,
+  getRecommendation,
+} from '@repo/shared/logic'
+import { ReadinessInputSchema, type ReadinessInput } from '@repo/shared/schemas/readiness'
 
 interface SubmitReadinessParams {
   userId: string
   input: ReadinessInput
+  sorenessZones?: string[]
+  notes?: string
+  bioMetrics?: {
+    sleepQuality?: number
+    restingHR?: number
+    bodyBattery?: number
+  }
 }
 
 /**
- * Hook for submitting daily readiness check to Firestore.
+ * Hook for submitting the Phase 2 daily readiness check to Firestore.
  *
- * Creates a DailyArc entry in the `/dailyArcs/{date-userId}` collection
- * with calculated readiness score and recommendation.
+ * - Validates the input with Zod before writing
+ * - Calculates RF using the shared pure function
+ * - Writes to /dailyArcs/{userId_YYYY-MM-DD} (composite ID prevents duplicates)
  */
 export function useSubmitReadiness() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ userId, input }: SubmitReadinessParams) => {
-      // Calculate readiness score using shared logic
-      const readinessScore = calculateReadiness({
-        sleepQuality: input.sleepQuality,
-        stressLevel: input.stressLevel,
-        soreness: input.soreness,
-        fatigue: input.fatigue,
-      })
+    mutationFn: async ({
+      userId,
+      input,
+      sorenessZones,
+      notes,
+      bioMetrics,
+    }: SubmitReadinessParams) => {
+      // Validate input using Zod schema
+      const parsed = ReadinessInputSchema.parse(input)
 
-      // Determine recommendation based on score
-      let recommendation: 'REST' | 'LIGHT' | 'MODERATE' | 'INTENSE'
-      if (readinessScore >= 8) recommendation = 'INTENSE'
-      else if (readinessScore >= 6) recommendation = 'MODERATE'
-      else if (readinessScore >= 4) recommendation = 'LIGHT'
-      else recommendation = 'REST'
+      // Calculate derived values using shared pure functions
+      const readinessFactor = calculateReadinessFactor(parsed)
+      const readinessAverage = calculateReadinessAverage(parsed)
+      const recommendation = getRecommendation(readinessFactor)
 
-      // Create unique document ID based on date and userId
+      // Composite ID: userId_YYYY-MM-DD (prevents duplicate entries per day)
       const today = new Date()
       const dateString = today.toISOString().split('T')[0] // YYYY-MM-DD
-      const docId = `${dateString}_${userId}`
+      const docId = `${userId}_${dateString}`
 
-      // Prepare the data to be stored
-      const dailyArcData = {
+      // Build bioMetrics object, excluding undefined fields
+      const bioMetricsData: Record<string, number> = {}
+      if (bioMetrics) {
+        if (bioMetrics.sleepQuality !== undefined)
+          bioMetricsData.sleepQuality = bioMetrics.sleepQuality
+        if (bioMetrics.restingHR !== undefined && bioMetrics.restingHR !== null)
+          bioMetricsData.restingHR = bioMetrics.restingHR
+        if (bioMetrics.bodyBattery !== undefined)
+          bioMetricsData.bodyBattery = bioMetrics.bodyBattery
+      }
+
+      const dailyArcData: Record<string, unknown> = {
         id: docId,
         userId,
         date: serverTimestamp(),
-        readinessScore,
+        readinessInput: parsed,
+        readinessFactor,
+        readinessAverage,
         recommendation,
+        sorenessZones: sorenessZones ?? [],
+        notes: notes ?? '',
         createdAt: serverTimestamp(),
-        // Include the raw input data for reference
-        sleepQuality: input.sleepQuality,
-        stressLevel: input.stressLevel,
-        soreness: input.soreness,
-        fatigue: input.fatigue,
-        sorenessZones: input.sorenessZones || [],
-        notes: input.notes || '',
       }
 
-      // Write to Firestore
+      // Only add bioMetrics if it has data
+      if (Object.keys(bioMetricsData).length > 0) {
+        dailyArcData.bioMetrics = bioMetricsData
+      }
+
       const docRef = doc(db, 'dailyArcs', docId)
       await setDoc(docRef, dailyArcData, { merge: true })
 
-      return {
-        docId,
-        readinessScore,
-        recommendation,
-      }
+      return { docId, readinessFactor, readinessAverage, recommendation }
     },
-    onSuccess: (data) => {
-      // Invalidate today's arc query to trigger a refetch
+    onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['todaysArc'] })
       queryClient.invalidateQueries({ queryKey: ['dailyArcs'] })
-
-      console.log('✅ Readiness submitted:', data)
+      console.log('Readiness submitted:', data)
     },
-    onError: (error) => {
-      console.error('❌ Failed to submit readiness:', error)
+    onError: error => {
+      console.error('Failed to submit readiness:', error)
     },
   })
 }

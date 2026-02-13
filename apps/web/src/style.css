@@ -139,29 +139,18 @@ input[type="range"]::-moz-range-thumb {
    Gaming/Bio-Hacking UI Components
    ============================================================================= */
 
-/* Glassmorphism Card */
+/* Solid Card — replaces glassmorphism to eliminate blur jitter */
 .glass-card {
-  @apply bg-slate-900/40 backdrop-blur-xl border border-white/5;
-  box-shadow:
-    0 0 20px rgba(59, 130, 246, 0.1),
-    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  @apply bg-slate-900 border border-slate-800;
 }
 
-/* Glowing elements - Active/Unlocked state */
+/* Active/Unlocked state — subtle border only */
 .glow-active {
-  box-shadow:
-    0 0 15px rgba(59, 130, 246, 0.5),
-    0 0 30px rgba(59, 130, 246, 0.3),
-    inset 0 0 10px rgba(59, 130, 246, 0.1);
   @apply border-blue-500/50;
 }
 
-/* Glowing elements - Success state */
+/* Success state — subtle border only */
 .glow-success {
-  box-shadow:
-    0 0 15px rgba(16, 185, 129, 0.5),
-    0 0 30px rgba(16, 185, 129, 0.3),
-    inset 0 0 10px rgba(16, 185, 129, 0.1);
   @apply border-emerald-500/50;
 }
 

@@ -21,7 +21,7 @@ interface AnalyticsChartProps {
 
 export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps) {
   // Transform data for display
-  const chartData = data.map((item) => ({
+  const chartData = data.map(item => ({
     day: item.dayLabel,
     readiness: item.readiness * 10, // Convert 0-10 to 0-100%
     sleep: item.sleep * 10, // Convert 0-10 hours to 0-100% scale
@@ -31,14 +31,14 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
   }))
 
   // Check if we have any real data
-  const hasData = data.some((item) => item.readiness > 0 || item.sleep > 0)
+  const hasData = data.some(item => item.readiness > 0 || item.sleep > 0)
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
-        <div className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+        <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-xl">
           <p className="mb-2 text-xs font-bold text-foreground">{data.day}</p>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `${value}%`}
+            tickFormatter={value => `${value}%`}
             ticks={[0, 25, 50, 75, 100]}
           />
 
@@ -198,7 +198,12 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
             stroke="hsl(var(--primary))"
             strokeWidth={2}
             fill="url(#colorSleep)"
-            dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+            dot={{
+              r: 3,
+              fill: 'hsl(var(--primary))',
+              strokeWidth: 2,
+              stroke: 'hsl(var(--background))',
+            }}
             activeDot={{
               r: 5,
               stroke: 'hsl(var(--background))',
@@ -213,7 +218,12 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
             stroke="hsl(var(--chart-carbs))"
             strokeWidth={2.5}
             fill="url(#colorReadiness)"
-            dot={{ r: 4, fill: 'hsl(var(--chart-carbs))', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+            dot={{
+              r: 4,
+              fill: 'hsl(var(--chart-carbs))',
+              strokeWidth: 2,
+              stroke: 'hsl(var(--background))',
+            }}
             activeDot={{
               r: 6,
               stroke: 'hsl(var(--background))',

@@ -1,4 +1,13 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts'
 
 interface WeeklyReadinessChartProps {
   data: Array<{
@@ -11,14 +20,14 @@ interface WeeklyReadinessChartProps {
 
 export default function WeeklyReadinessChart({ data, isLoading }: WeeklyReadinessChartProps) {
   // Normalize scores to percentage (0-10 scale -> 0-100% scale, then * 1.5 for 0-150% range)
-  const normalizedData = data.map((item) => ({
+  const normalizedData = data.map(item => ({
     ...item,
     score: item.score * 10, // Convert 0-10 to 0-100%
     displayScore: item.score.toFixed(1),
   }))
 
   // Check if we have any data
-  const hasData = data.some((item) => item.score > 0)
+  const hasData = data.some(item => item.score > 0)
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -42,16 +51,7 @@ export default function WeeklyReadinessChart({ data, isLoading }: WeeklyReadines
 
     return (
       <g>
-        {isAbove100 && (
-          <circle
-            cx={cx}
-            cy={cy}
-            r={8}
-            fill="hsl(var(--primary))"
-            opacity={0.2}
-            className="animate-pulse"
-          />
-        )}
+        {isAbove100 && <circle cx={cx} cy={cy} r={8} fill="hsl(var(--primary))" opacity={0.2} />}
         <circle
           cx={cx}
           cy={cy}
@@ -103,10 +103,7 @@ export default function WeeklyReadinessChart({ data, isLoading }: WeeklyReadines
 
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <AreaChart
-        data={normalizedData}
-        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-      >
+      <AreaChart data={normalizedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="hsl(var(--chart-carbs))" stopOpacity={0.3} />
@@ -138,7 +135,7 @@ export default function WeeklyReadinessChart({ data, isLoading }: WeeklyReadines
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `${value}%`}
+          tickFormatter={value => `${value}%`}
           ticks={[0, 50, 100, 150]}
         />
 

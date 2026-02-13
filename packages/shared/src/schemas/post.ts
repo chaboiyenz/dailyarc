@@ -11,14 +11,21 @@ export const PostSchema = z.object({
   userId: z.string(),
   /** Author display name (denormalized) */
   authorName: z.string(),
+  /** Author role (denormalized for badge display) */
+  userRole: z.enum(['TRAINEE', 'TRAINER']),
   /** Post content (text) */
   content: z.string().min(1).max(500),
-  /** Optional image URL from Firebase Storage */
-  imageUrl: z.string().url().optional(),
+  /** Optional media URL from Firebase Storage */
+  mediaUrl: z.string().url().optional(),
+  /** Media type */
+  mediaType: z.enum(['image', 'video', 'none']).default('none'),
   /** Array of user IDs who liked this post */
   likes: z.array(z.string()).default([]),
-  /** Number of comments (for display, actual comments in separate collection) */
-  commentCount: z.number().int().min(0).default(0),
+  /** @deprecated Comments are now stored in sub-collection posts/{postId}/comments */
+  comments: z
+    .array(z.lazy(() => CommentSchema))
+    .default([])
+    .optional(),
   /** Post type for filtering and display */
   type: z.enum(['milestone', 'workout', 'meal', 'general']).default('general'),
   /** Optional context reference (e.g., workout ID, exercise ID) */
@@ -41,7 +48,8 @@ export type Post = z.infer<typeof PostSchema>
  */
 export const CreatePostInputSchema = z.object({
   content: z.string().min(1).max(500),
-  imageUrl: z.string().url().optional(),
+  mediaUrl: z.string().optional(),
+  mediaType: z.enum(['image', 'video', 'none']).default('none'),
   type: z.enum(['milestone', 'workout', 'meal', 'general']).default('general'),
   contextRef: z
     .object({
@@ -57,7 +65,8 @@ export const CommentSchema = z.object({
   id: z.string(),
   userId: z.string(),
   userName: z.string(),
-  content: z.string().min(1),
+  userRole: z.enum(['TRAINEE', 'TRAINER']),
+  content: z.string().min(1).max(500),
   createdAt: z.any(), // Firestore Timestamp
 })
 

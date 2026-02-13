@@ -5,7 +5,7 @@ import type { NavSection } from './Sidebar'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodaysArc } from '@/hooks/useTodaysArc'
 import { useWeeklyReadiness, useReadinessStreak } from '@/hooks/useWeeklyReadiness'
-import { calculateReadinessFactor, calculateDynamicMacros } from '@repo/shared/logic'
+import { calculateDynamicMacros } from '@repo/shared/logic'
 
 interface DashboardOverviewProps {
   onNavigate: (section: NavSection) => void
@@ -18,12 +18,12 @@ export default function DashboardOverview({ onNavigate }: DashboardOverviewProps
   const { streak, isLoading: streakLoading } = useReadinessStreak(user?.uid || null)
 
   // Real-time data from Firestore or defaults
-  const readinessScore = todaysArc?.readinessScore ?? 0
+  const readinessScore = (todaysArc?.readinessAverage ?? 0) * 2
   const recommendation = todaysArc?.recommendation ?? 'REST'
 
-  // Calculate adjusted macros based on readiness
+  // RF is stored directly on the arc document
   const baseMacros = { protein: 180, carbs: 250, fat: 70 }
-  const readinessFactor = readinessScore > 0 ? calculateReadinessFactor(readinessScore) : 1.0
+  const readinessFactor = todaysArc?.readinessFactor ?? 1.0
   const adjustedMacros = calculateDynamicMacros(baseMacros, readinessFactor)
   const totalCalories = Math.round(adjustedMacros.protein * 4 + adjustedMacros.carbs * 4 + adjustedMacros.fat * 9)
 

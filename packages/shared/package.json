@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./schemas": "./src/schemas/index.ts",
     "./schemas/user": "./src/schemas/user.ts",
+    "./schemas/readiness": "./src/schemas/readiness.ts",
     "./schemas/dailyArc": "./src/schemas/dailyArc.ts",
     "./schemas/dailyLog": "./src/schemas/dailyLog.ts",
     "./logic": "./src/logic/index.ts",

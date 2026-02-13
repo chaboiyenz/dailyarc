@@ -67,6 +67,8 @@ export const ConversationSchema = z.object({
   otherParticipantName: z.string(),
   /** Other participant's ID */
   otherParticipantId: z.string(),
+  /** Other participant's role (for display) */
+  otherParticipantRole: z.enum(['TRAINEE', 'TRAINER', 'ADMIN']).optional(),
 })
 
 export type Conversation = z.infer<typeof ConversationSchema>

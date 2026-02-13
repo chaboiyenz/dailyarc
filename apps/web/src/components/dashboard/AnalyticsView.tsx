@@ -7,13 +7,13 @@ export default function AnalyticsView() {
   const { user } = useAuth()
   const { data, summary, isLoading } = useAnalyticsData(user?.uid || null)
 
-  const avgReadiness = summary.avgReadiness.toFixed(1)
+  const avgReadiness = isNaN(summary.avgReadiness) ? '--' : summary.avgReadiness.toFixed(1)
   const totalVolume = summary.totalVolume
-  const avgSleep = summary.avgSleep.toFixed(1)
-  const avgCalories = Math.round(summary.avgCalories)
+  const avgSleep = isNaN(summary.avgSleep) ? '--' : summary.avgSleep.toFixed(1)
+  const avgCalories = isNaN(summary.avgCalories) ? '--' : Math.round(summary.avgCalories)
 
   // Check if we have any data
-  const hasData = data.some((d) => d.readiness > 0 || d.sleep > 0)
+  const hasData = data.some(d => d.readiness > 0 || d.sleep > 0)
 
   if (isLoading) {
     return (
@@ -32,26 +32,32 @@ export default function AnalyticsView() {
       <div className="grid gap-4 md:grid-cols-4">
         <AnalyticStat
           label="Avg Readiness"
-          value={hasData ? avgReadiness : '--'}
-          unit={hasData ? '/ 10' : 'No data'}
+          value={avgReadiness}
+          unit={avgReadiness === '--' ? 'No data' : '/ 10'}
           color="hsl(var(--chart-carbs))"
         />
         <AnalyticStat
           label="Total Volume"
           value={hasData && totalVolume > 0 ? String(totalVolume) : '--'}
-          unit={hasData && totalVolume > 0 ? 'reps' : 'Phase 3'}
+          unit={hasData && totalVolume > 0 ? 'reps' : 'Log Data to Unlock'}
           color="hsl(var(--chart-protein))"
         />
         <AnalyticStat
           label="Avg Sleep"
-          value={hasData ? avgSleep : '--'}
-          unit={hasData ? 'hours' : 'No data'}
+          value={avgSleep}
+          unit={avgSleep === '--' ? 'No data' : 'hours'}
           color="hsl(var(--primary))"
         />
         <AnalyticStat
           label="Avg Calories"
-          value={hasData && avgCalories > 0 ? avgCalories.toLocaleString() : '--'}
-          unit={hasData && avgCalories > 0 ? 'kcal' : 'Phase 4'}
+          value={
+            avgCalories === '--'
+              ? '--'
+              : typeof avgCalories === 'number' && avgCalories > 0
+                ? avgCalories.toLocaleString()
+                : '--'
+          }
+          unit={avgCalories === '--' || avgCalories === 0 ? 'Log Data to Unlock' : 'kcal'}
           color="hsl(var(--chart-fat))"
         />
       </div>
@@ -66,7 +72,7 @@ export default function AnalyticsView() {
         </CardHeader>
         <CardContent>
           <AnalyticsChart
-            data={data.map((d) => ({
+            data={data.map(d => ({
               dayLabel: d.dayLabel,
               readiness: d.readiness,
               sleep: d.sleep,
@@ -125,10 +131,14 @@ export default function AnalyticsView() {
                         key={i}
                         className="border-b border-border/50 transition-colors hover:bg-secondary/30"
                       >
-                        <td className="px-4 py-3 text-sm font-medium text-foreground">{d.dayLabel}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-foreground">
+                          {d.dayLabel}
+                        </td>
                         <td className="px-4 py-3">
                           {hasDataForDay ? (
-                            <span className="font-mono text-sm text-foreground">{d.sleep.toFixed(1)}h</span>
+                            <span className="font-mono text-sm text-foreground">
+                              {d.sleep.toFixed(1)}h
+                            </span>
                           ) : (
                             <span className="text-sm text-muted-foreground">--</span>
                           )}
@@ -160,7 +170,9 @@ export default function AnalyticsView() {
                         </td>
                         <td className="px-4 py-3">
                           {d.volume > 0 ? (
-                            <span className="font-mono text-sm text-foreground">{d.volume} reps</span>
+                            <span className="font-mono text-sm text-foreground">
+                              {d.volume} reps
+                            </span>
                           ) : (
                             <span className="text-sm text-muted-foreground">--</span>
                           )}

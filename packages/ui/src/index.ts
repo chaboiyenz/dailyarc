@@ -15,6 +15,7 @@
 // Custom Components
 export { Header } from './components/Header'
 export { Counter } from './components/Counter'
+export { ReadinessBattery } from './components/ReadinessBattery'
 
 // Shadcn UI Components
 export { Button, buttonVariants } from './components/ui/button'
@@ -33,6 +34,38 @@ export { Input } from './components/ui/input'
 export { Label } from './components/ui/label'
 export { Slider } from './components/ui/slider'
 export { RadioGroup, RadioGroupItem } from './components/ui/radio-group'
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from './components/ui/dialog'
 
 // Utilities
-export { cn } from './lib/utils'
+export * from './lib/utils'
+
+// ... other exports
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+} from './components/ui/dropdown-menu'

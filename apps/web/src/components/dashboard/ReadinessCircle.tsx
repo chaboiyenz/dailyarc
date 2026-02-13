@@ -9,7 +9,11 @@ interface ReadinessCircleProps {
   size?: number
 }
 
-export default function ReadinessCircle({ score, recommendation, size = 280 }: ReadinessCircleProps) {
+export default function ReadinessCircle({
+  score,
+  recommendation,
+  size = 280,
+}: ReadinessCircleProps) {
   const radius = (size - 40) / 2
   const circumference = 2 * Math.PI * radius
   const progress = (score / 10) * 100
@@ -34,10 +38,10 @@ export default function ReadinessCircle({ score, recommendation, size = 280 }: R
   const glowClass = getGlowClass(score)
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-2 w-full h-full px-2">
       {/* Main Circle */}
-      <div className={`relative ${glowClass} rounded-full p-4 transition-all duration-500`}>
-        <svg width={size} height={size} className="drop-shadow-2xl">
+      <div className={`relative ${glowClass} rounded-full transition-all duration-500`}>
+        <svg width={size} height={size} className="w-full h-auto">
           {/* Background circle */}
           <circle
             cx={size / 2}
@@ -61,9 +65,6 @@ export default function ReadinessCircle({ score, recommendation, size = 280 }: R
             strokeDashoffset={strokeDashoffset}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
             className="ring-animate"
-            style={{
-              filter: `drop-shadow(0 0 8px ${color}80)`,
-            }}
           />
 
           {/* Center content */}
@@ -71,7 +72,9 @@ export default function ReadinessCircle({ score, recommendation, size = 280 }: R
             x={size / 2}
             y={size / 2 - 20}
             textAnchor="middle"
-            className="fill-foreground text-7xl font-black"
+            dominantBaseline="middle"
+            className="fill-foreground font-black"
+            style={{ fontSize: `${size * 0.25}px` }}
           >
             {score.toFixed(1)}
           </text>
@@ -79,38 +82,32 @@ export default function ReadinessCircle({ score, recommendation, size = 280 }: R
             x={size / 2}
             y={size / 2 + 15}
             textAnchor="middle"
-            className="fill-muted-foreground text-sm font-medium uppercase tracking-widest"
+            dominantBaseline="middle"
+            className="fill-muted-foreground font-medium uppercase tracking-widest"
+            style={{ fontSize: `${size * 0.05}px` }}
           >
             / 10
           </text>
         </svg>
-
-        {/* Pulse animation overlay for high scores */}
-        {score >= 8 && (
-          <div className="absolute inset-0 rounded-full bg-emerald-500/5 animate-pulse-glow" />
-        )}
       </div>
 
       {/* Recommendation Badge */}
-      <div className="glass-card flex flex-col items-center gap-2 px-6 py-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Today's Protocol
+      <div className="flex flex-col items-center gap-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Protocol
         </span>
-        <span
-          className="text-2xl font-black tracking-tight"
-          style={{ color }}
-        >
+        <span className="text-lg font-black tracking-tight" style={{ color }}>
           {recommendation}
         </span>
       </div>
 
       {/* Score interpretation */}
-      <div className="text-center text-xs text-muted-foreground">
-        {score >= 8 && '🔥 Peak performance - Go all out'}
-        {score >= 6 && score < 8 && '💪 Good to train - Standard intensity'}
-        {score >= 4 && score < 6 && '⚠️ Moderate - Scale back volume'}
-        {score < 4 && '🛑 Low readiness - Prioritize recovery'}
-        {score === 0 && 'Submit your daily readiness check to get started'}
+      <div className="text-center text-xs text-muted-foreground line-clamp-2">
+        {score >= 8 && '🔥 Peak performance'}
+        {score >= 6 && score < 8 && '💪 Good to train'}
+        {score >= 4 && score < 6 && '⚠️ Moderate'}
+        {score < 4 && '🛑 Low readiness'}
+        {score === 0 && 'Submit readiness check'}
       </div>
     </div>
   )

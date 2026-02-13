@@ -11,8 +11,8 @@ export interface AnalyticsDataPoint {
   stress: number
   soreness: number
   fatigue: number
-  volume: number // Workout volume (placeholder for Phase 3)
-  calories: number // Placeholder for Phase 4
+  volume: number
+  calories: number
 }
 
 export interface AnalyticsSummary {
@@ -45,22 +45,69 @@ export function useAnalyticsData(userId: string | null) {
 
     const fetchAnalyticsData = async () => {
       try {
-        // Fetch last 7 days of daily arcs
         const sevenDaysAgo = new Date()
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        sevenDaysAgo.setHours(0, 0, 0, 0)
 
-        const arcsRef = collection(db, 'dailyArcs')
-        const q = query(
-          arcsRef,
-          where('userId', '==', userId),
-          where('date', '>=', Timestamp.fromDate(sevenDaysAgo)),
-          orderBy('date', 'asc'),
-          limit(7)
-        )
+        // Fetch all 3 data sources in parallel
+        const [arcsSnapshot, workoutsSnapshot, mealsSnapshot] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, 'dailyArcs'),
+              where('userId', '==', userId),
+              where('date', '>=', Timestamp.fromDate(sevenDaysAgo)),
+              orderBy('date', 'asc'),
+              limit(7)
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, 'workouts'),
+              where('userId', '==', userId),
+              where('date', '>=', Timestamp.fromDate(sevenDaysAgo)),
+              orderBy('date', 'asc'),
+              limit(50)
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, 'mealLogs'),
+              where('userId', '==', userId),
+              where('timestamp', '>=', Timestamp.fromDate(sevenDaysAgo)),
+              orderBy('timestamp', 'asc'),
+              limit(100)
+            )
+          ),
+        ])
 
-        const snapshot = await getDocs(q)
+        // Build workout volume map by date
+        const volumeByDate: Record<string, number> = {}
+        workoutsSnapshot.docs.forEach(doc => {
+          const d = doc.data()
+          // Workout doc ID format: {userId}_{YYYY-MM-DD}_{timestamp}
+          const idParts = doc.id.split('_')
+          const dateKey =
+            idParts.length >= 2 ? idParts[1] : d.date?.toDate?.()?.toISOString().split('T')[0] || ''
+          if (dateKey) {
+            volumeByDate[dateKey] = (volumeByDate[dateKey] || 0) + (d.totalVolume || d.reps || 0)
+          }
+        })
 
-        // Build data for last 7 days
+        // Build calories map by date
+        const caloriesByDate: Record<string, number> = {}
+        const daysWithCaloriesSet = new Set<string>()
+        mealsSnapshot.docs.forEach(doc => {
+          const d = doc.data()
+          const dateKey = d.timestamp?.toDate?.()
+            ? d.timestamp.toDate().toISOString().split('T')[0]
+            : ''
+          if (dateKey) {
+            caloriesByDate[dateKey] = (caloriesByDate[dateKey] || 0) + (d.calories || 0)
+            daysWithCaloriesSet.add(dateKey)
+          }
+        })
+
+        // Build final data array for last 7 days
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         const today = new Date()
         const weeklyData: AnalyticsDataPoint[] = []
@@ -70,6 +117,7 @@ export function useAnalyticsData(userId: string | null) {
         let totalVolume = 0
         let totalCalories = 0
         let daysWithData = 0
+        let daysWithCalories = 0
 
         for (let i = 6; i >= 0; i--) {
           const date = new Date(today)
@@ -77,35 +125,35 @@ export function useAnalyticsData(userId: string | null) {
           const dateString = date.toISOString().split('T')[0]
           const dayLabel = days[date.getDay()]
 
-          // Find matching arc data
-          const arcDoc = snapshot.docs.find((doc) => doc.id.startsWith(dateString))
+          // Arc doc ID format: {userId}_{YYYY-MM-DD}
+          const arcDoc = arcsSnapshot.docs.find(doc => doc.id === `${userId}_${dateString}`)
+          const dayVolume = volumeByDate[dateString] || 0
+          const dayCalories = caloriesByDate[dateString] || 0
 
           if (arcDoc && arcDoc.exists()) {
-            const arcData = arcDoc.data() as any
-
-            // Calculate sleep from the inverted values
-            const sleepQuality = arcData.sleepQuality || 0
-            const stressLevel = arcData.stressLevel || 0
-            const sorenessLevel = arcData.soreness || 0
-            const fatigueLevel = arcData.fatigue || 0
+            const arcData = arcDoc.data() as DailyArcEntry
+            const ri = arcData.readinessInput
+            const sleepVal = ri?.sleep ?? 0
+            const stressVal = ri?.stress ?? 0
+            const sorenessVal = ri?.soreness ?? 0
+            const energyVal = ri?.energy ?? 0
 
             weeklyData.push({
               date: dateString,
               dayLabel,
-              readiness: arcData.readinessScore || 0,
-              sleep: sleepQuality,
-              stress: stressLevel,
-              soreness: sorenessLevel,
-              fatigue: fatigueLevel,
-              volume: 0, // TODO: Fetch from workout logs in Phase 3
-              calories: 0, // TODO: Fetch from nutrition logs in Phase 4
+              readiness: arcData.readinessAverage * 2,
+              sleep: sleepVal,
+              stress: stressVal,
+              soreness: sorenessVal,
+              fatigue: 5 - energyVal,
+              volume: dayVolume,
+              calories: dayCalories,
             })
 
-            totalReadiness += arcData.readinessScore || 0
-            totalSleep += sleepQuality
+            totalReadiness += arcData.readinessAverage * 2
+            totalSleep += sleepVal
             daysWithData++
           } else {
-            // No data for this day
             weeklyData.push({
               date: dateString,
               dayLabel,
@@ -114,22 +162,29 @@ export function useAnalyticsData(userId: string | null) {
               stress: 0,
               soreness: 0,
               fatigue: 0,
-              volume: 0,
-              calories: 0,
+              volume: dayVolume,
+              calories: dayCalories,
             })
+          }
+
+          totalVolume += dayVolume
+          totalCalories += dayCalories
+          if (dayCalories > 0) {
+            daysWithCalories++
           }
         }
 
         setData(weeklyData)
+        const avgReadinessVal = daysWithData > 0 ? totalReadiness / daysWithData : 0
+        const avgSleepVal = daysWithData > 0 ? totalSleep / daysWithData : 0
+        const avgCaloriesVal = daysWithCalories > 0 ? totalCalories / daysWithCalories : 0
 
-        // Calculate summary statistics
         setSummary({
-          avgReadiness: daysWithData > 0 ? totalReadiness / daysWithData : 0,
-          totalVolume, // Currently 0, will be real in Phase 3
-          avgSleep: daysWithData > 0 ? totalSleep / daysWithData : 0,
-          avgCalories: daysWithData > 0 ? totalCalories / daysWithData : 0,
+          avgReadiness: isNaN(avgReadinessVal) ? 0 : avgReadinessVal,
+          totalVolume,
+          avgSleep: isNaN(avgSleepVal) ? 0 : avgSleepVal,
+          avgCalories: isNaN(avgCaloriesVal) ? 0 : avgCaloriesVal,
         })
-
         setError(null)
       } catch (err) {
         console.error('Error fetching analytics data:', err)

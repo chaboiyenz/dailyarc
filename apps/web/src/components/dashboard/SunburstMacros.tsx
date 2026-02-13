@@ -10,12 +10,7 @@ interface SunburstMacrosProps {
   size?: number
 }
 
-export default function SunburstMacros({
-  protein,
-  carbs,
-  fat,
-  size = 320,
-}: SunburstMacrosProps) {
+export default function SunburstMacros({ protein, carbs, fat, size = 320 }: SunburstMacrosProps) {
   const centerX = size / 2
   const centerY = size / 2
 
@@ -42,14 +37,14 @@ export default function SunburstMacros({
   const fatRing = getStrokeDasharray(innerRadius, fatProgress)
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center justify-center gap-1 w-full h-full px-2">
       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Macro Targets
       </h4>
 
       {/* Sunburst SVG */}
-      <div className="relative">
-        <svg width={size} height={size} className="drop-shadow-2xl">
+      <div className="relative flex-shrink-0 max-w-[140px] max-h-[140px]">
+        <svg width={size} height={size} className="w-auto h-auto" viewBox={`0 0 ${size} ${size}`}>
           {/* Background rings */}
           <circle
             cx={centerX}
@@ -91,10 +86,7 @@ export default function SunburstMacros({
             strokeDasharray={proteinRing.circumference}
             strokeDashoffset={proteinRing.offset}
             transform={`rotate(-90 ${centerX} ${centerY})`}
-            className="sunburst-ring"
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))',
-            }}
+            className="ring-animate"
           />
 
           {/* Carbs ring (middle) */}
@@ -109,10 +101,7 @@ export default function SunburstMacros({
             strokeDasharray={carbsRing.circumference}
             strokeDashoffset={carbsRing.offset}
             transform={`rotate(-90 ${centerX} ${centerY})`}
-            className="sunburst-ring"
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.6))',
-            }}
+            className="ring-animate"
           />
 
           {/* Fat ring (inner) */}
@@ -127,42 +116,23 @@ export default function SunburstMacros({
             strokeDasharray={fatRing.circumference}
             strokeDashoffset={fatRing.offset}
             transform={`rotate(-90 ${centerX} ${centerY})`}
-            className="sunburst-ring"
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(251, 146, 60, 0.6))',
-            }}
+            className="ring-animate"
           />
-
-          {/* Center glow */}
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r={innerRadius - 25}
-            fill="url(#centerGlow)"
-            opacity="0.3"
-          />
-
-          <defs>
-            <radialGradient id="centerGlow">
-              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-            </radialGradient>
-          </defs>
         </svg>
 
         {/* Center total calories */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-black text-foreground">
+          <span className="text-2xl md:text-2xl font-black text-foreground">
             {Math.round(protein.current * 4 + carbs.current * 4 + fat.current * 9)}
           </span>
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             kcal
           </span>
         </div>
       </div>
 
-      {/* Legend with targets */}
-      <div className="grid w-full grid-cols-3 gap-3">
+      {/* Legend with targets - compact */}
+      <div className="grid w-full grid-cols-3 gap-1 text-center">
         <MacroLegendItem
           label="Protein"
           current={protein.current}
@@ -200,15 +170,15 @@ function MacroLegendItem({
   const progress = (current / target) * 100
 
   return (
-    <div className="glass-card flex flex-col items-center gap-2 px-3 py-2">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col items-center gap-0.5 rounded-lg border border-slate-800 bg-slate-900 px-1.5 py-1">
+      <span className="text-[8px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
-      <div className="flex items-baseline gap-1">
-        <span className="font-mono text-lg font-bold text-foreground">{current}</span>
-        <span className="text-xs text-muted-foreground">/ {target}g</span>
+      <div className="flex items-baseline gap-0.5 text-center">
+        <span className="font-mono text-xs font-bold text-foreground">{current}</span>
+        <span className="text-[9px] text-muted-foreground">/{target}g</span>
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-secondary">
+      <div className="h-0.5 w-10 overflow-hidden rounded-full bg-secondary">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: color }}
