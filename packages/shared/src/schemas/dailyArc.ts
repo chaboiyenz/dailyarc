@@ -35,6 +35,23 @@ export const DailyArcEntrySchema = z.object({
       avgHR: z.number().positive().optional(), // Optional metric from wearable or manual entry
       avgHRSource: z.enum(['wearable', 'manual']).optional(), // Indicates source of avgHR data
       bodyBattery: z.number().min(1).max(100).optional(), // Energy level / mapped from energy slider
+
+      // NEW PRO-TIER FIELDS (from wearable sync)
+      stepCount: z.number().int().nonnegative().optional().describe('Daily steps from wearable'),
+      sleepDurationMinutes: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe('Total sleep time in minutes'),
+      hrvMs: z.number().positive().optional().describe('Heart Rate Variability in milliseconds'),
+
+      // Sync metadata
+      syncedAt: z.any().optional().describe('Firestore Timestamp - when this data was synced'),
+      syncSource: z
+        .enum(['wearable', 'manual', 'hybrid'])
+        .optional()
+        .describe('Origin of bioMetrics data'),
     })
     .optional(),
 

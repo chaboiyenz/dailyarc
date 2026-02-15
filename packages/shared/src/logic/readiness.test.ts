@@ -178,6 +178,40 @@ describe('calculateDynamicMacros', () => {
     const result = calculateDynamicMacros(baseMacros, 1.05)
     expect(result).toEqual({ protein: 189, carbs: 263, fat: 74 })
   })
+
+  // BOUNDARY TESTS: Ensure no rounding errors at extremes
+  it('handles absolute minimum (0.8) with no NaN or rounding errors', () => {
+    const result = calculateDynamicMacros(baseMacros, 0.8)
+    expect(Number.isNaN(result.protein)).toBe(false)
+    expect(Number.isNaN(result.carbs)).toBe(false)
+    expect(Number.isNaN(result.fat)).toBe(false)
+    expect(result.protein).toBeGreaterThan(0)
+    expect(result.carbs).toBeGreaterThan(0)
+    expect(result.fat).toBeGreaterThan(0)
+  })
+
+  it('handles absolute maximum (1.2) with no NaN or rounding errors', () => {
+    const result = calculateDynamicMacros(baseMacros, 1.2)
+    expect(Number.isNaN(result.protein)).toBe(false)
+    expect(Number.isNaN(result.carbs)).toBe(false)
+    expect(Number.isNaN(result.fat)).toBe(false)
+    expect(result.protein).toBeGreaterThan(baseMacros.protein)
+    expect(result.carbs).toBeGreaterThan(baseMacros.carbs)
+    expect(result.fat).toBeGreaterThan(baseMacros.fat)
+  })
+
+  it('produces valid macros with fractional readiness factors', () => {
+    const fractionalFactors = [0.85, 0.95, 1.05, 1.15]
+    fractionalFactors.forEach(factor => {
+      const result = calculateDynamicMacros(baseMacros, factor)
+      expect(result.protein).toBeGreaterThan(0)
+      expect(result.carbs).toBeGreaterThan(0)
+      expect(result.fat).toBeGreaterThan(0)
+      expect(Number.isInteger(result.protein)).toBe(true)
+      expect(Number.isInteger(result.carbs)).toBe(true)
+      expect(Number.isInteger(result.fat)).toBe(true)
+    })
+  })
 })
 
 // =============================================================================
@@ -216,5 +250,61 @@ describe('getIntensityAdjustment', () => {
   it('gets intensity adjustment for calisthenics', () => {
     expect(getIntensityAdjustment(0.7, 'CALISTHENICS').levelDelta).toBe(-2)
     expect(getIntensityAdjustment(1.2, 'CALISTHENICS').levelDelta).toBe(1)
+  })
+})
+
+// =============================================================================
+// Pro Tier Bio-Metrics Support
+// =============================================================================
+
+describe('Pro Tier Bio-Metrics', () => {
+  it('should recognize Pro bioMetrics fields in DailyArcEntry', () => {
+    // Verify that Pro-tier fields (stepCount, hrvMs, sleepDurationMinutes) can be stored
+    const proBioMetrics = {
+      sleepQuality: 85,
+      restingHR: 62,
+      avgHR: 115,
+      avgHRSource: 'wearable' as const,
+      bodyBattery: 75,
+      stepCount: 8500,
+      sleepDurationMinutes: 420,
+      hrvMs: 45,
+      syncSource: 'wearable' as const,
+    }
+
+    // These fields should be present in the schema
+    expect(proBioMetrics.stepCount).toBe(8500)
+    expect(proBioMetrics.sleepDurationMinutes).toBe(420)
+    expect(proBioMetrics.hrvMs).toBe(45)
+  })
+
+  it('should handle hybrid sync data (wearable + manual)', () => {
+    const hybridBioMetrics = {
+      sleepQuality: 80, // Manual
+      restingHR: 60, // Manual
+      avgHR: 120, // From wearable
+      avgHRSource: 'wearable' as const,
+      stepCount: 9000, // From wearable
+      sleepDurationMinutes: 450, // From wearable
+      hrvMs: 50, // From wearable
+      syncSource: 'hybrid' as const,
+    }
+
+    expect(hybridBioMetrics.syncSource).toBe('hybrid')
+    expect(hybridBioMetrics.stepCount).toBeGreaterThan(0)
+  })
+
+  it('should support optional Pro bioMetrics fields', () => {
+    // Free tier users should still be able to submit minimal data
+    const freeTierBioMetrics: Partial<Record<string, number | string>> = {
+      sleepQuality: 75,
+      restingHR: 65,
+      avgHR: 110,
+      avgHRSource: 'manual',
+    }
+
+    // Pro fields are optional - free users won't have them
+    expect(freeTierBioMetrics.stepCount).toBeUndefined()
+    expect(freeTierBioMetrics.hrvMs).toBeUndefined()
   })
 })

@@ -74,6 +74,8 @@ export default function OnboardingFlow() {
         fitnessGoals: [],
         unitPreference: 'metric',
         isPublicProfile: false,
+        subscription: { tier: 'FREE', status: 'none' },
+        wearableSync: { provider: 'NONE', isConnected: false, syncEnabled: false },
         // Using current Date for Zod validation; replaced with serverTimestamp in DB call
         createdAt: new Date(),
       }

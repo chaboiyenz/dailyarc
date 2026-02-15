@@ -1,4 +1,4 @@
-import { Skeleton } from '@repo/ui'
+import { Skeleton, Button } from '@repo/ui'
 import HumanSilhouette from './HumanSilhouette'
 import WeeklyReadinessChart from './WeeklyReadinessChart'
 import type { NavSection } from './Sidebar'
@@ -8,7 +8,17 @@ import { useWeeklyReadiness } from '@/hooks/useWeeklyReadiness'
 import { useRecentWorkouts } from '@/hooks/useLogWorkout'
 import { useTodaysMealLogs } from '@/hooks/useMealLogs'
 import { calculateAdjustedMacros } from '@repo/shared'
-import { TrendingUp, Heart, Zap, Target, ChevronRight, AlertTriangle, Watch, Pencil } from 'lucide-react'
+import {
+  TrendingUp,
+  Heart,
+  Zap,
+  Target,
+  ChevronRight,
+  AlertTriangle,
+  Watch,
+  Pencil,
+  Crown,
+} from 'lucide-react'
 
 interface DashboardOverviewProps {
   onNavigate: (section: NavSection) => void
@@ -115,6 +125,35 @@ export default function DashboardOverview({ onNavigate }: DashboardOverviewProps
         </div>
       </div>
 
+      {/* PRO STATUS BANNER */}
+      {useAuth().profile?.subscription?.tier === 'PRO' && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/20">
+                <Crown className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">DailyArc Pro Active</p>
+                <p className="text-xs text-gray-600">
+                  {useAuth().profile?.wearableSync?.isConnected
+                    ? '✓ Wearable syncing enabled'
+                    : 'Connect your wearable in Settings'}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => onNavigate('profile')}
+              variant="outline"
+              size="sm"
+              className="bg-white border-amber-500/50 hover:bg-gray-100"
+            >
+              Settings
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* GRID: Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* System Energy (Recovery Fuel) */}
@@ -167,16 +206,15 @@ export default function DashboardOverview({ onNavigate }: DashboardOverviewProps
         <div className="p-4 rounded-xl bg-white border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Avg HR
-              </p>
-              <p className="text-4xl font-bold text-purple-600 mt-2">
-                {avgHR ? `${avgHR}` : '—'}
-              </p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Avg HR</p>
+              <p className="text-4xl font-bold text-purple-600 mt-2">{avgHR ? `${avgHR}` : '—'}</p>
               {avgHR && <p className="text-xs text-gray-600 mt-1">BPM</p>}
             </div>
             {avgHRSource === 'wearable' ? (
-              <Watch className="h-6 w-6 text-purple-500 flex-shrink-0" aria-label="From wearable device" />
+              <Watch
+                className="h-6 w-6 text-purple-500 flex-shrink-0"
+                aria-label="From wearable device"
+              />
             ) : avgHRSource === 'manual' ? (
               <Pencil className="h-6 w-6 text-purple-500 flex-shrink-0" aria-label="Manual entry" />
             ) : (

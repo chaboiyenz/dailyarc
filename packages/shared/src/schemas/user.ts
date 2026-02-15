@@ -82,6 +82,27 @@ export const UserSchema = z.object({
       deadlift: z.number().optional(),
     })
     .default({}),
+
+  // Pro Subscription Fields
+  subscription: z
+    .object({
+      tier: z.enum(['FREE', 'PRO']).default('FREE'),
+      status: z.enum(['none', 'active', 'past_due', 'canceled', 'trialing']).default('none'),
+      stripeCustomerId: z.string().optional(),
+      stripeSubscriptionId: z.string().optional(),
+      currentPeriodEnd: z.any().optional().describe('Firestore Timestamp'),
+    })
+    .default({ tier: 'FREE', status: 'none' }),
+
+  // Wearable Sync Configuration
+  wearableSync: z
+    .object({
+      provider: z.enum(['GOOGLE_FIT', 'NONE']).default('NONE'),
+      isConnected: z.boolean().default(false),
+      lastSyncAt: z.any().optional().describe('Firestore Timestamp'),
+      syncEnabled: z.boolean().default(false),
+    })
+    .default({ provider: 'NONE', isConnected: false, syncEnabled: false }),
 })
 
 export const CreateUserSchema = z.object({

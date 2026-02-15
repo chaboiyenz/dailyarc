@@ -7,13 +7,13 @@ import {
   signInWithEmailAndPassword,
   User as FirebaseUser,
 } from 'firebase/auth'
-import { doc, onSnapshot, enableNetwork, waitForPendingWrites } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { auth, db, googleProvider, githubProvider } from '@/lib/firebase'
 import { UserSchema, type User } from '@repo/shared'
 
 export function useAuth() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
-  const [profile, setProfile] = useState<User | null | undefined>(undefined) // undefined = still loading
+  const [profile, setProfile] = useState<User | null | undefined>(undefined) // undefined = loading, null = no profile
   const [loading, setLoading] = useState(true)
 
   /**
@@ -25,19 +25,34 @@ export function useAuth() {
   const needsOnboarding =
     !loading &&
     user !== null &&
-    (profile === null ||
-      profile === undefined ||
-      !profile.onboardingComplete ||
-      profile.role === null)
+    (profile === null || !profile?.onboardingComplete || profile?.role === null)
 
-  // -- Auth Actions ----------------------------------------------------------
+  // -- Auth Actions with Enhanced Error Handling -----------------------------
+
+  const handleAuthError = (error: unknown) => {
+    const firebaseError = error as { code?: string }
+    if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+      alert(
+        '❌ Account exists with different credential. Please sign in with the method you originally used (Google, GitHub, or Email).'
+      )
+    }
+    throw error
+  }
 
   const signInWithGoogle = useCallback(async () => {
-    await signInWithPopup(auth, googleProvider)
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch (error) {
+      handleAuthError(error)
+    }
   }, [])
 
   const signInWithGithub = useCallback(async () => {
-    await signInWithPopup(auth, githubProvider)
+    try {
+      await signInWithPopup(auth, githubProvider)
+    } catch (error) {
+      handleAuthError(error)
+    }
   }, [])
 
   const signUpWithEmail = useCallback(async (email: string, pass: string) => {
@@ -52,70 +67,66 @@ export function useAuth() {
     await firebaseSignOut(auth)
   }, [])
 
-  // -- Auth State Listener ---------------------------------------------------
+  // -- Refactored Auth & Profile Listener ------------------------------------
 
   useEffect(() => {
     console.log('🔌 Auth Listener: Attaching...')
-    console.log('🔥 Firestore Instance Type:', db.type)
+
+    // Maintain a local variable for the snapshot cleanup function
+    let unsubscribeSnapshot: (() => void) | null = null
 
     const unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
       console.log('👤 User State:', firebaseUser ? 'Logged In' : 'Logged Out')
 
+      // 1. Always clean up the previous profile listener if it exists
+      if (unsubscribeSnapshot) {
+        console.log('🧹 Cleaning up previous profile listener...')
+        unsubscribeSnapshot()
+        unsubscribeSnapshot = null
+      }
+
       if (firebaseUser) {
         setUser(firebaseUser)
-
         const userDocRef = doc(db, 'users', firebaseUser.uid)
 
-        // RT-1: Switch to onSnapshot for real-time profile updates
-        // This fixes the onboarding redirect loop by reacting immediately to the DB write
-        const unsubscribeSnapshot = onSnapshot(
+        // 2. Attach a fresh real-time listener for the new user
+        unsubscribeSnapshot = onSnapshot(
           userDocRef,
           docSnapshot => {
             if (docSnapshot.exists()) {
-              console.log('📂 Profile updated from DB')
+              console.log('📂 Profile updated from Firestore')
               const result = UserSchema.safeParse(docSnapshot.data())
               if (result.success) {
                 setProfile(result.data)
-                setLoading(false)
               } else {
-                console.error('❌ Invalid profile data format', result.error)
+                console.error('❌ Invalid profile data format:', result.error)
                 setProfile(null)
-                setLoading(false)
               }
             } else {
-              console.log('📝 User has no profile yet (Needs Onboarding)')
+              console.log('📝 User has no profile document yet')
               setProfile(null)
-              setLoading(false)
             }
+            setLoading(false)
           },
           error => {
             console.error('🔥 Firestore Snapshot Error:', error)
             setLoading(false)
           }
         )
-
-        // Cleanup snapshot listener when auth state changes or component unmounts
-        // Note: multiple auth state changes might leak listeners if not handled carefully,
-        // but useEffect cleanup handles the main auth unsubscribe.
-        // Ideally we'd store the snapshot unsubscribe to call it later, but onAuthStateChanged
-        // implies a new user session.
-        // For simplicity in this hook structure, we can't easily unsubscribe *just* the snapshot
-        // from inside this callback without refs.
-        // HOWEVER, since this is a top-level provider, it rarely unmounts.
-        // A better pattern might be a separate useEffect for the user profile.
       } else {
+        // Handle Logout
         setUser(null)
         setProfile(null)
         setLoading(false)
       }
     })
 
-    return () => unsubscribeAuth()
+    // Final cleanup on component unmount
+    return () => {
+      unsubscribeAuth()
+      if (unsubscribeSnapshot) unsubscribeSnapshot()
+    }
   }, [])
-
-  // Refactor: We need a cleaner way to handle the nested subscription.
-  // The above implementation leaks the snapshot listener if the user logs out and back in without unmounting.
-  // Let's separate the effects.
 
   return {
     user,

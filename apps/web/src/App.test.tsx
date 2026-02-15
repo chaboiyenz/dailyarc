@@ -1,60 +1,52 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import { App } from './App'
 
+// Mock Firebase to prevent test crashes
+vi.mock('@/lib/firebase', () => {
+  const mockUnsubscribe = vi.fn()
+  return {
+    auth: {
+      onAuthStateChanged: vi.fn(cb => {
+        cb(null) // Call callback with null (logged out)
+        return mockUnsubscribe
+      }),
+    },
+    db: {
+      onSnapshot: vi.fn(() => mockUnsubscribe),
+    },
+    googleProvider: {},
+    githubProvider: {},
+    storage: {},
+  }
+})
+
 describe('App', () => {
-  it('renders the header with title', () => {
+  it('renders the DailyArc brand on the authentication page', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('The Hytel Way')
+    const brandTitle = screen.getByRole('heading', { level: 1 })
+    expect(brandTitle).toHaveTextContent(/DAILYARC/i)
   })
 
-  it('renders the counter with initial value of 0', () => {
+  it('renders authentication options', () => {
     render(<App />)
-    expect(screen.getByText('0')).toBeInTheDocument()
+    // Check for sign-in options (Google, GitHub, Email)
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBeGreaterThan(0)
   })
 
-  it('increments the counter when clicking increase button', () => {
-    render(<App />)
-    const increaseButton = screen.getByRole('button', { name: /increment counter/i })
-    fireEvent.click(increaseButton)
-    expect(screen.getByText('1')).toBeInTheDocument()
+  it('renders the authentication page without errors', () => {
+    const { container } = render(<App />)
+    expect(container).toBeTruthy()
+    // Verify the app renders without crashing
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
-  it('decrements the counter when clicking decrease button', () => {
+  it('displays authentication UI when user is not logged in', () => {
     render(<App />)
-    const decreaseButton = screen.getByRole('button', { name: /decrement counter/i })
-    fireEvent.click(decreaseButton)
-    expect(screen.getByText('-1')).toBeInTheDocument()
-  })
-
-  it('resets counter to zero when clicking reset button', () => {
-    render(<App />)
-    const increaseButton = screen.getByRole('button', { name: /increment counter/i })
-    const resetButton = screen.getByRole('button', { name: /reset/i })
-
-    // Increment a few times
-    fireEvent.click(increaseButton)
-    fireEvent.click(increaseButton)
-    expect(screen.getByText('2')).toBeInTheDocument()
-
-    // Reset
-    fireEvent.click(resetButton)
-    expect(screen.getByText('0')).toBeInTheDocument()
-  })
-
-  it('renders the stack overview card', () => {
-    render(<App />)
-    expect(screen.getByText('Stack Overview', { exact: false })).toBeInTheDocument()
-  })
-
-  it('renders the monorepo structure card', () => {
-    render(<App />)
-    expect(screen.getByText('Monorepo Structure', { exact: false })).toBeInTheDocument()
-  })
-
-  it('renders Vite and React logos', () => {
-    render(<App />)
-    expect(screen.getByAltText('Vite logo')).toBeInTheDocument()
-    expect(screen.getByAltText('React logo')).toBeInTheDocument()
+    // Should show loading or auth UI
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toBeInTheDocument()
+    expect(heading.textContent).toContain('DAILYARC')
   })
 })

@@ -1,12 +1,15 @@
 import './style.css'
 import { useState } from 'react'
-import { BrowserRouter } from 'react-router-dom' // 1. Added Router Import
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuthContext } from '@/providers/AuthProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { UnitProvider } from '@/providers/UnitPreferenceProvider'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import EmailAuthForm from '@/components/auth/EmailAuthForm'
+import WearableCallback from '@/components/wearable/WearableCallback'
+import SubscriptionSuccess from '@/components/subscription/SubscriptionSuccess'
+import SubscriptionCanceled from '@/components/subscription/SubscriptionCanceled'
 import { Button } from '@repo/ui/Button'
 
 function AppContent() {
@@ -156,13 +159,25 @@ function AppContent() {
 export function App() {
   return (
     <QueryProvider>
-      {/* 2. Added BrowserRouter around the AuthProvider and Content */}
       <BrowserRouter>
-        <AuthProvider>
-          <UnitProvider>
-            <AppContent />
-          </UnitProvider>
-        </AuthProvider>
+        <Routes>
+          {/* OAuth Callback and Subscription Routes */}
+          <Route path="/wearable-callback" element={<WearableCallback />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="/subscription/canceled" element={<SubscriptionCanceled />} />
+
+          {/* Main App Routes */}
+          <Route
+            path="*"
+            element={
+              <AuthProvider>
+                <UnitProvider>
+                  <AppContent />
+                </UnitProvider>
+              </AuthProvider>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </QueryProvider>
   )

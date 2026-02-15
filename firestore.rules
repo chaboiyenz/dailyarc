@@ -17,11 +17,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && getUserData().role == 'ADMIN';
+      // Allow if user has admin role, or doesn't have a profile yet (new user during onboarding)
+      return isAuthenticated() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'
+      );
     }
 
     function isTrainerRole() {
-      return isAuthenticated() && getUserData().role == 'TRAINER';
+      // Allow if user has trainer role, or doesn't have a profile yet (new user during onboarding)
+      return isAuthenticated() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TRAINER'
+      );
     }
 
     function isTrainerOf(traineeId) {
@@ -29,11 +37,26 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == trainee.trainerId;
     }
 
+    function isPro() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscription.tier == 'PRO';
+    }
+
     // ── Users Collection ──────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isOwner(userId) || isTrainerOf(userId) || isAdmin();
       // FIX: Allow Trainers to list users so they can find trainees to message
       allow list: if isAdmin() || isTrainerRole();
+      // Allow new users to create their own document during onboarding
+      allow create: if isOwner(userId);
+      // Write with Pro tier protection: Prevent users from self-promoting to PRO
+      allow write: if isOwner(userId) && (
+        // If subscription fields are being modified, they must stay the same (unless admin)
+        !('subscription' in request.resource.data) ||
+        resource.data.subscription.tier == request.resource.data.subscription.tier ||
+        isAdmin()
+      );
+
       allow write: if isOwner(userId) || (isAdmin() && request.resource.data.trainerStatus in ['PENDING', 'APPROVED', 'REJECTED']);
     }
 
@@ -43,7 +66,19 @@ service cloud.firestore {
       allow get: if isAuthenticated() && (arcId.split('_')[0] == request.auth.uid || isTrainerOf(arcId.split('_')[0]));
       // FIX: Trainers can list arcs for their trainees
       allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isTrainerOf(resource.data.userId));
-      allow update: if isAuthenticated() && arcId.split('_')[0] == request.auth.uid;
+
+      // Update with Pro feature gating: Prevent free users from writing Pro bioMetrics fields
+      allow update: if isAuthenticated() &&
+        arcId.split('_')[0] == request.auth.uid &&
+        (
+          !('bioMetrics' in request.resource.data) ||
+          !(
+            'stepCount' in request.resource.data.bioMetrics ||
+            'hrvMs' in request.resource.data.bioMetrics ||
+            'sleepDurationMinutes' in request.resource.data.bioMetrics
+          ) ||
+          isPro()
+        );
     }
 
     match /workouts/{workoutId} {

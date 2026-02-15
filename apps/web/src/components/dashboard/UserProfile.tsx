@@ -1,15 +1,33 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePasswordChange } from '@/hooks/usePasswordChange'
+import { useWearableSync } from '@/hooks/useWearableSync'
+import { useStripeCheckout } from '@/hooks/useStripeCheckout'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db, storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label } from '@repo/ui'
-import { Upload, Trash2, Lock, Eye, EyeOff, Plus, X } from 'lucide-react'
+import { Upload, Trash2, Lock, Eye, EyeOff, Plus, X, Watch, Crown, Zap, Check } from 'lucide-react'
 
 export default function UserProfile() {
   const { user, profile } = useAuth()
   const { changePassword, loading: pwLoading } = usePasswordChange()
+  const {
+    connectWearable,
+    disconnectWearable,
+    isConnecting,
+    error: wearableError,
+  } = useWearableSync(user?.uid || null)
+  const {
+    startCheckout,
+    openCustomerPortal,
+    isLoading: checkoutLoading,
+    error: checkoutError,
+  } = useStripeCheckout(
+    user?.uid || null,
+    user?.email || null,
+    profile?.subscription?.stripeCustomerId
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Form states
@@ -435,6 +453,226 @@ export default function UserProfile() {
               Save Profile
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Wearable Devices Section - PRO FEATURE */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">Wearable Devices</CardTitle>
+              {profile?.subscription?.tier !== 'PRO' && (
+                <span className="px-2 py-1 text-xs font-bold bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                  PRO
+                </span>
+              )}
+            </div>
+            <Watch className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {profile?.subscription?.tier !== 'PRO' ? (
+            <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700">
+              <p className="text-sm text-muted-foreground mb-3">
+                Automatically sync heart rate, sleep quality, and activity data from your wearable
+                device.
+              </p>
+              <Button
+                onClick={() => startCheckout({ priceId: import.meta.env.VITE_STRIPE_PRO_PRICE_ID })}
+                disabled={checkoutLoading}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade to Pro
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Connection Status */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-700">
+                <div className="flex items-center gap-3">
+                  <Watch className="h-5 w-5 text-cyan-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Google Fit</p>
+                    <p className="text-xs text-muted-foreground">
+                      {profile?.wearableSync?.isConnected ? 'Connected' : 'Not connected'}
+                    </p>
+                  </div>
+                </div>
+
+                {profile?.wearableSync?.isConnected ? (
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    <Button
+                      onClick={disconnectWearable}
+                      disabled={isConnecting}
+                      variant="outline"
+                      size="sm"
+                      className="bg-slate-800 border-slate-600 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
+                    >
+                      {isConnecting ? 'Disconnecting...' : 'Disconnect'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={connectWearable}
+                    disabled={isConnecting}
+                    variant="default"
+                    size="sm"
+                    className="bg-cyan-500 hover:bg-cyan-600"
+                  >
+                    {isConnecting ? 'Connecting...' : 'Connect'}
+                  </Button>
+                )}
+              </div>
+
+              {/* Last Sync Info */}
+              {profile?.wearableSync?.isConnected && profile?.wearableSync?.lastSyncAt && (
+                <div className="text-xs text-muted-foreground">
+                  Last synced: {new Date(profile.wearableSync.lastSyncAt.toDate()).toLocaleString()}
+                </div>
+              )}
+
+              {/* Error Display */}
+              {wearableError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                  {wearableError}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Subscription Management Section */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Subscription</CardTitle>
+            <Crown className="h-5 w-5 text-amber-400" />
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {profile?.subscription?.tier === 'PRO' ? (
+            <>
+              {/* Active subscription display */}
+              <div className="p-4 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20">
+                    <Zap className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground">DailyArc Pro</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Status:{' '}
+                      <span className="text-emerald-400 font-semibold">
+                        {profile.subscription.status === 'active'
+                          ? 'Active'
+                          : profile.subscription.status === 'trialing'
+                            ? 'Trial'
+                            : profile.subscription.status === 'past_due'
+                              ? 'Past Due'
+                              : 'Active'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {profile.subscription.currentPeriodEnd && (
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {profile.subscription.status === 'canceled'
+                      ? `Access ends: ${new Date(profile.subscription.currentPeriodEnd.toDate()).toLocaleDateString()}`
+                      : `Renews: ${new Date(profile.subscription.currentPeriodEnd.toDate()).toLocaleDateString()}`}
+                  </p>
+                )}
+
+                <Button
+                  onClick={openCustomerPortal}
+                  disabled={checkoutLoading}
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-slate-800 border-amber-500/50 hover:bg-slate-700 text-amber-400"
+                >
+                  {checkoutLoading ? 'Loading...' : 'Manage Subscription'}
+                </Button>
+              </div>
+
+              {/* Pro features list */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Your Pro Benefits
+                </p>
+                <ul className="space-y-1.5 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    Wearable device sync
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    Advanced analytics
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    Custom programs
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    Data export
+                  </li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Upgrade prompt */}
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Unlock the full potential of DailyArc with Pro features.
+                </p>
+
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-sm">
+                    <Zap className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Automatic wearable sync</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Zap className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Advanced trend analysis</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Zap className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Custom training builder</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() =>
+                    startCheckout({ priceId: import.meta.env.VITE_STRIPE_PRO_PRICE_ID })
+                  }
+                  disabled={checkoutLoading}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold"
+                  size="lg"
+                >
+                  <Crown className="h-5 w-5 mr-2" />
+                  {checkoutLoading ? 'Loading...' : 'Upgrade to Pro - $9.99/month'}
+                </Button>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  Cancel anytime. Powered by Stripe.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Error Display */}
+          {checkoutError && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {checkoutError}
+            </div>
+          )}
         </CardContent>
       </Card>
 
